@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "signal_workers"
+version = "0.1.0"
+description = "Copy Trader signal acquisition daemons (Hyperliquid / OKX / EVM smart money / Binance / bicoin)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "copy_trader team" }]
+license = { text = "Proprietary" }
+
+dependencies = [
+    "redis>=5.0.0",
+    "websockets>=12.0",
+    "aiohttp>=3.9.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "prometheus-client>=0.19.0",
+    "structlog>=24.1.0",
+    "asyncpg>=0.29.0",
+    "orjson>=3.9.0",
+    "tenacity>=8.2.0",
+    "python-dotenv>=1.0.0",
+    "web3>=6.15.0",
+    "hyperliquid-python-sdk>=0.6.0; python_version<'3.13'",
+    "python-okx>=0.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "fakeredis>=2.20.0",
+    "aioresponses>=0.7.6",
+    "mypy>=1.7.0",
+    "ruff>=0.1.6",
+]
+
+[project.scripts]
+signal-workers = "signal_workers.cli:main"
+
+# --------------------------------------------------------------------------------------
+# Package layout
+# --------------------------------------------------------------------------------------
+# The directory containing this pyproject.toml (i.e. `signal_workers/`) IS the python
+# package. That means `import signal_workers` resolves to this directory, and
+# `import signal_workers.common.schema` resolves to ./common/schema.py.
+#
+# We achieve that with setuptools `package-dir = { "signal_workers" = "." }` and an
+# explicit package list. We deliberately do NOT use packages.find here because it gets
+# confused by the flat layout.
+# --------------------------------------------------------------------------------------
+
+[tool.setuptools]
+packages = [
+    "signal_workers",
+    "signal_workers.common",
+    "signal_workers.workers",
+    "signal_workers.workers.hyperliquid_ws",
+    "signal_workers.workers.okx_public",
+    "signal_workers.workers.binance_lead",
+    "signal_workers.workers.evm_smart_money",
+    "signal_workers.workers.bicoin_scraper",
+]
+package-dir = { "signal_workers" = "." }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["..", "."]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
