@@ -1,0 +1,115 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: ct_postgres
+    environment:
+      POSTGRES_USER: copytrader
+      POSTGRES_PASSWORD: copytrader
+      POSTGRES_DB: copytrader
+    ports:
+      - "5432:5432"
+    volumes:
+      - ct_pg_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U copytrader"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ct_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ct_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: ct_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://copytrader:copytrader@postgres:5432/copytrader
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-only-do-not-use
+      AES_KEY: dev-only-32-bytes-aes-key-xxxxxxx
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app
+
+  signal_workers:
+    build:
+      context: ../signal_workers
+      dockerfile: Dockerfile
+    container_name: ct_signal_workers
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://copytrader:copytrader@postgres:5432/copytrader
+      ENABLED_SOURCES: "hyperliquid_ws,okx_public,evm_smart_money"
+    volumes:
+      - ../signal_workers:/app
+
+  execution_engine:
+    build:
+      context: ../execution_engine
+      dockerfile: Dockerfile
+    container_name: ct_execution_engine
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://copytrader:copytrader@postgres:5432/copytrader
+      REDIS_URL: redis://redis:6379/0
+      AES_KEY: dev-only-32-bytes-aes-key-xxxxxxx
+    volumes:
+      - ../execution_engine:/app
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: ct_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ct_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ct_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ct_grafana_data:/var/lib/grafana
+
+volumes:
+  ct_pg_data:
+  ct_redis_data:
+  ct_grafana_data:
