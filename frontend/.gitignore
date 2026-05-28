@@ -1,10 +1,2 @@
-node_modules
-dist
-dist-ssr
-.DS_Store
-.vscode
-.idea
-*.local
-auto-imports.d.ts
-components.d.ts
-.env.local
+node_modules/
+dist/

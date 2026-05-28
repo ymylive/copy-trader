@@ -27,6 +27,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
+# BigInteger autoincrement works on PG; on SQLite we need INTEGER PK.
+PKType = BigInteger().with_variant(Integer, "sqlite")
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -77,7 +81,7 @@ class StringArray(types.TypeDecorator):
 class ExchangeAccount(Base):
     __tablename__ = "exchange_accounts"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(PKType, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     alias: Mapped[str] = mapped_column(Text, nullable=False)
     tier: Mapped[str] = mapped_column(Text, nullable=False, default="standard")
@@ -104,7 +108,7 @@ class ExchangeAccount(Base):
 class Trader(Base):
     __tablename__ = "traders"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(PKType, primary_key=True, autoincrement=True)
     source: Mapped[str] = mapped_column(Text, nullable=False)
     external_id: Mapped[str] = mapped_column(Text, nullable=False)
     display_name: Mapped[str | None] = mapped_column(Text)
@@ -126,7 +130,7 @@ class Trader(Base):
 class CopyConfig(Base):
     __tablename__ = "copy_configs"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(PKType, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     exchange_account_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("exchange_accounts.id", ondelete="CASCADE"), nullable=False
@@ -164,7 +168,7 @@ class CopyConfig(Base):
 class CopyOrder(Base):
     __tablename__ = "copy_orders"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(PKType, primary_key=True, autoincrement=True)
     copy_config_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("copy_configs.id", ondelete="CASCADE"), nullable=False
     )
@@ -226,7 +230,7 @@ class NavCurve(Base):
 class SubscriptionResource(Base):
     __tablename__ = "subscription_resources"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(PKType, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     sku: Mapped[str] = mapped_column(Text, nullable=False)
     bound_account_id: Mapped[int | None] = mapped_column(BigInteger)

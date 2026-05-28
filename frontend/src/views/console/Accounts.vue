@@ -131,7 +131,12 @@ async function removeAccount() {
       平台是否上架取决于技术原因或其他成本考量，上架不构成任何投资建议，过往数据不代表未来表现。
     </div>
 
-    <el-tabs v-model="accStore.currentId" type="card" class="acc-tabs">
+    <el-tabs
+      :model-value="accStore.currentId ?? undefined"
+      type="card"
+      class="acc-tabs"
+      @update:model-value="(v) => accStore.select(Number(v))"
+    >
       <el-tab-pane
         v-for="acc in accStore.list"
         :key="acc.id"

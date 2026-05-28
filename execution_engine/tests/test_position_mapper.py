@@ -95,34 +95,42 @@ def _order_event(symbol="BTC-USDT-SWAP", side="long", action="open", qty="0.5", 
 
 
 class TestMoneyMode:
+    @staticmethod
+    def _expected(notional: str, price: str = "65000") -> Decimal:
+        from decimal import ROUND_DOWN
+
+        return (Decimal(notional) / Decimal(price)).quantize(
+            Decimal("0.00000001"), rounding=ROUND_DOWN
+        )
+
     def test_fixed_amount(self):
         cfg = _cfg(money_mode="fixed", money_param={"amount": "200"})
         m = PositionMapper()
         intents = m.map_event(cfg, _order_event(), _snap())
         assert len(intents) == 1
         # 200 / 65000 = 0.00307692
-        assert intents[0].qty == Decimal("200") / Decimal("65000")
+        assert intents[0].qty == self._expected("200")
 
     def test_full_percent_of_balance(self):
         cfg = _cfg(money_mode="full", money_param={"percent": "50"})
         m = PositionMapper()
         intents = m.map_event(cfg, _order_event(), _snap(bal="1000"))
         # 1000 * 50% = 500 ; 500 / 65000
-        assert intents[0].qty == Decimal("500") / Decimal("65000")
+        assert intents[0].qty == self._expected("500")
 
     def test_compound_percent_of_total(self):
         cfg = _cfg(money_mode="compound", money_param={"percent": "10"})
         m = PositionMapper()
         intents = m.map_event(cfg, _order_event(), _snap(total="2000"))
         # 2000 * 10% = 200 ; 200/65000
-        assert intents[0].qty == Decimal("200") / Decimal("65000")
+        assert intents[0].qty == self._expected("200")
 
     def test_multiplier_scales_qty(self):
         cfg = _cfg(money_mode="fixed", money_param={"amount": "100"}, multiplier=Decimal("3"))
         m = PositionMapper()
         intents = m.map_event(cfg, _order_event(), _snap())
         # 100 * 3 / 65000
-        assert intents[0].qty == Decimal("300") / Decimal("65000")
+        assert intents[0].qty == self._expected("300")
 
 
 # ── triggers (3 kinds) ──────────────────────────────────────────────
