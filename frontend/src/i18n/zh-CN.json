@@ -1,0 +1,35 @@
+{
+  "app": { "name": "Copy Trader" },
+  "nav": {
+    "home": "首页",
+    "invite": "推广返佣",
+    "shop": "商城",
+    "wallet": "钱包",
+    "profile": "个人中心",
+    "tutorial": "使用教程",
+    "console": "控制台",
+    "login": "登录"
+  },
+  "console": {
+    "dashboard": "首页",
+    "accounts": "账户管理",
+    "copyTrading": "智能跟单",
+    "traderSquare": "交易员广场",
+    "exchangeWatchlist": "交易所自选",
+    "bicoinWatchlist": "币Coin自选",
+    "positions": "持仓详情",
+    "system": "系统控制"
+  },
+  "common": {
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "search": "搜索",
+    "loading": "加载中",
+    "empty": "暂无数据",
+    "copy": "复制",
+    "copied": "已复制"
+  }
+}

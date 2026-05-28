@@ -1,0 +1,35 @@
+{
+  "app": { "name": "Copy Trader" },
+  "nav": {
+    "home": "Home",
+    "invite": "Referral",
+    "shop": "Shop",
+    "wallet": "Wallet",
+    "profile": "Profile",
+    "tutorial": "Tutorial",
+    "console": "Console",
+    "login": "Login"
+  },
+  "console": {
+    "dashboard": "Dashboard",
+    "accounts": "Accounts",
+    "copyTrading": "Copy Trading",
+    "traderSquare": "Trader Square",
+    "exchangeWatchlist": "Exchange Watchlist",
+    "bicoinWatchlist": "Bicoin Watchlist",
+    "positions": "Positions",
+    "system": "System"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading",
+    "empty": "No data",
+    "copy": "Copy",
+    "copied": "Copied"
+  }
+}

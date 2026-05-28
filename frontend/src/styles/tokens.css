@@ -1,0 +1,81 @@
+:root {
+  /* Brand */
+  --ct-primary: #10B981;
+  --ct-primary-600: #0D9488;
+  --ct-primary-700: #0F766E;
+  --ct-primary-50: #ECFDF5;
+  --ct-primary-100: #D1FAE5;
+  --ct-accent: #38BDF8;
+  --ct-warn: #F59E0B;
+  --ct-danger: #EF4444;
+  --ct-success: #22C55E;
+
+  /* Surfaces (light) */
+  --ct-bg: #F5F7F9;
+  --ct-bg-card: #FFFFFF;
+  --ct-bg-elev: #FAFBFC;
+  --ct-border: #E5E7EB;
+  --ct-border-soft: #F1F3F5;
+
+  /* Text */
+  --ct-text-1: #111827;
+  --ct-text-2: #4B5563;
+  --ct-text-3: #9CA3AF;
+  --ct-text-inverse: #FFFFFF;
+
+  /* Public site (dark space) */
+  --ct-space-bg: #06080C;
+  --ct-space-card: #0E141B;
+  --ct-space-border: #1F2937;
+  --ct-space-text: #E5E7EB;
+  --ct-space-text-mute: #9CA3AF;
+  --ct-space-accent: #A3E635;
+
+  /* Spacing scale */
+  --ct-sp-1: 4px;
+  --ct-sp-2: 8px;
+  --ct-sp-3: 12px;
+  --ct-sp-4: 16px;
+  --ct-sp-5: 20px;
+  --ct-sp-6: 24px;
+  --ct-sp-8: 32px;
+  --ct-sp-10: 40px;
+  --ct-sp-12: 48px;
+
+  /* Radius */
+  --ct-r-sm: 6px;
+  --ct-r-md: 10px;
+  --ct-r-lg: 14px;
+  --ct-r-xl: 20px;
+
+  /* Shadow */
+  --ct-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --ct-shadow-md: 0 6px 18px rgba(15, 23, 42, 0.06);
+  --ct-shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.08);
+
+  /* Fonts */
+  --ct-font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+    "Helvetica Neue", Helvetica, Arial, "Segoe UI", Roboto, sans-serif;
+  --ct-font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Element Plus overrides */
+  --el-color-primary: var(--ct-primary);
+  --el-color-primary-light-3: #34D399;
+  --el-color-primary-light-5: #6EE7B7;
+  --el-color-primary-light-7: #A7F3D0;
+  --el-color-primary-light-8: #BBF7D0;
+  --el-color-primary-light-9: var(--ct-primary-50);
+  --el-color-primary-dark-2: var(--ct-primary-600);
+  --el-border-radius-base: 8px;
+}
+
+html.dark {
+  --ct-bg: #06080C;
+  --ct-bg-card: #0E141B;
+  --ct-bg-elev: #131A22;
+  --ct-border: #1F2937;
+  --ct-border-soft: #1A222B;
+  --ct-text-1: #F3F4F6;
+  --ct-text-2: #C7CDD3;
+  --ct-text-3: #6B7280;
+}
