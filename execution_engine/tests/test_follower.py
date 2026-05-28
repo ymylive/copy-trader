@@ -48,6 +48,19 @@ async def _db():
     reset_engine_for_tests()
 
 
+def _patch_redis_for_fakeredis(redis: Any) -> None:
+    """fakeredis 2.24 has a known issue where ``xreadgroup`` with ``block``
+    returns nothing even when data is available. Strip the block kwarg
+    in the test harness."""
+    orig = redis.xreadgroup
+
+    async def patched(*args, **kwargs):
+        kwargs.pop("block", None)
+        return await orig(*args, **kwargs)
+
+    redis.xreadgroup = patched
+
+
 class _StubAdapter:
     """Minimal in-memory adapter that records intents."""
 
@@ -105,6 +118,7 @@ class _StubAdapter:
 @pytest.mark.asyncio
 async def test_runner_consumes_signal_and_writes_copy_order():
     redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
+    _patch_redis_for_fakeredis(redis)
     adapter = _StubAdapter()
 
     # seed PG: trader + exchange_account + copy_config
@@ -216,8 +230,12 @@ async def test_runner_consumes_signal_and_writes_copy_order():
     assert adapter.placed, "expected at least one order to be placed"
     assert adapter.placed[0].symbol == "BTC-USDT-SWAP"
     assert adapter.placed[0].side == "long"
-    # qty = 100 / 65000
-    assert adapter.placed[0].qty == Decimal("100") / Decimal("65000")
+    # qty = 100 / 65000, quantized to 8 dp
+    from decimal import ROUND_DOWN
+    expected = (Decimal("100") / Decimal("65000")).quantize(
+        Decimal("0.00000001"), rounding=ROUND_DOWN
+    )
+    assert adapter.placed[0].qty == expected
 
     # ensure copy_orders row created
     async with session_scope() as ses:
@@ -244,6 +262,7 @@ async def test_engine_starts_with_no_configs():
 async def test_runner_idempotency_dedups_by_event_id():
     """Two identical signals must produce only one copy_orders row."""
     redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
+    _patch_redis_for_fakeredis(redis)
     adapter = _StubAdapter()
 
     async with session_scope() as ses:

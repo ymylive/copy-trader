@@ -618,6 +618,15 @@ class FollowerEngine:
                 pass
 
     async def _fetch_active_configs(self) -> list[_RunnerCtx]:
+        try:
+            return await self._fetch_active_configs_impl()
+        except Exception as exc:  # noqa: BLE001
+            # Tables missing / DB unreachable → log and return empty.
+            # Engine must not crash on cold DB.
+            log.warning("fetch_configs_failed", error=str(exc))
+            return []
+
+    async def _fetch_active_configs_impl(self) -> list[_RunnerCtx]:
         async with session_scope() as ses:
             q = await ses.execute(
                 select(CopyConfig, ExchangeAccount, Trader)
