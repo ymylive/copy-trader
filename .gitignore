@@ -1,3 +1,53 @@
+# Python
 *.egg-info/
+*.egg
 .venv/
+venv/
 __pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+.npm/
+
+# Env / secrets — never commit
+.env
+.env.*
+!.env.example
+.envrc
+
+# Local data / databases
+*.db
+*.sqlite
+*.sqlite3
+demo.db
+copy_trader_dev.db
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Playwright / screenshots from dev
+frontend/screenshots/
+**/__screenshots__/
+playwright-report/
+test-results/
+
+# Build artefacts
+build/
+.cache/
+
+# Logs
+*.log
