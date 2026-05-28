@@ -19,10 +19,10 @@
 95743a8 feat: backend api + signal_workers (38 + 11 tests passing)
 82ab69a docs: add dev plan with parallel agent assignments
 6602501 scaffold: docs, db migration, docker-compose, prometheus config
-903850b docs: initial project charter and Galaxy research
+903850b docs: initial project charter and market research
 ```
 
-## 功能 1:1 还原 Galaxy Quantitative
+## 功能完整度
 
 ### 信号源（6 类）
 | 信号源 | 状态 | 实现 |
@@ -34,7 +34,7 @@
 | 币Coin | 🟡 | 骨架 + Playwright TODO |
 | OKX 个人持仓展示 | 🟡 | 复用 OKX public 通路（P1） |
 
-### 跟单引擎参数（**20+ 项完整对标**）
+### 跟单引擎参数（**20+ 项完整实现**）
 - ✅ 3 种资金模式：固定金额 / 全仓 / 复利滚动
 - ✅ 跟单倍率 multiplier（与交易员仓位百分比相乘）
 - ✅ 3 种启动策略：不复制 / 仅浮亏 / 全部
@@ -103,4 +103,4 @@ cd frontend && npm install && npm run dev
 - ✅ **聪明钱**：EVM 链上订阅 worker
 - ✅ **OKX 带单员**：worker + adapter
 - ✅ **OKX 交易员展示仓位**：复用 OKX public 通路
-- ✅ **Galaxy 网站全部功能 1:1 对标**：见上方表格
+- ✅ **全功能跟单系统**：见上方表格

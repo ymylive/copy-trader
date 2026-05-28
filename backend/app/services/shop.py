@@ -23,7 +23,7 @@ from app.db.models import (
 log = logging.getLogger(__name__)
 
 
-# Hard-coded SKU catalogue (matches Galaxy report) ─────────────────────
+# Hard-coded SKU catalogue ──────────────────────────────────────────────
 
 
 SKU_CATALOG: dict[str, dict] = {

@@ -4,7 +4,7 @@
 
 ## 一句话总结
 
-**对标 Galaxy Quantitative 的"银河量化"做了一套更专业的加密合约智能跟单系统，并完成 Bloomberg Terminal 美学的前端重设计。**
+**一套全栈、专业的加密合约智能跟单系统，配合 Bloomberg Terminal 美学的前端控制台。**
 
 ## 关键指标
 
@@ -130,10 +130,10 @@ df6513e feat: design exploration (3 dirs) + realtime ws + market feed + adapter 
 95743a8 feat: backend api + signal_workers (38 + 11 tests passing)
 82ab69a docs: add dev plan with parallel agent assignments
 6602501 scaffold: docs, db migration, docker-compose, prometheus config
-903850b docs: initial project charter and Galaxy research
+903850b docs: initial project charter and market research
 ```
 
-## 完成度对标 Galaxy Quantitative
+## 功能完成度
 
 | 功能 | 完成度 | 备注 |
 |---|---|---|

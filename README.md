@@ -1,12 +1,11 @@
 # Copy Trader — 跨交易所·跨数据源 智能跟单系统
 
 > 立项时间：2026-05-28
-> 对标：[Galaxy Quantitative](https://galaxyquantitative.com/home)（详细调研见 `research/galaxy_quantitative_report.md`）
 > 信号源调研：`research/signal_sources_research.md`
 
 ## 一、产品愿景
 
-打造一套**比 Galaxy Quantitative 更全栈、更链上、更工程化**的加密合约智能跟单系统：
+打造一套**全栈、链上、工程化**的加密合约智能跟单系统：
 
 - **6 大信号源**：Binance 带单员、OKX 带单员、OKX 交易员持仓展示、Hyperliquid、链上聪明钱、币Coin
 - **4 大交易所执行**：Binance Futures、OKX Perpetual、Gate.io Perp、Bitget Mix；Hyperliquid 链上原生
@@ -27,7 +26,7 @@
 | 链上 | **web3.py 6 + Alchemy/Infura/Hyperliquid RPC** | 多 RPC fallback |
 | WS | **websockets + aiohttp** | |
 | 鉴权 | **JWT + bcrypt + TOTP（2FA 可选）** | |
-| 前端 | **Vue 3 + TypeScript + Element Plus + Vite + Pinia + ECharts** | 与原站同栈，便于迁移参考 |
+| 前端 | **Vue 3 + TypeScript + Element Plus + Vite + Pinia + ECharts** | 现代金融控制台栈 |
 | 部署 | **Docker Compose（开发）→ K8s + Helm（生产）** | |
 | 监控 | **Prometheus + Grafana + Loki** | |
 | 通知 | **aiogram (TG) + email + WeChat WorkPush + Twilio** | |
@@ -50,10 +49,10 @@ copy_trader/
 ├── execution_engine/        跟单执行引擎 + 风控
 │   └── exchanges/{binance,okx,gate,bitget,hyperliquid}
 ├── frontend/                Vue 3 SPA（公开站 + 控制台）
-└── research/                竞品 / 信号源调研报告（已完成）
+└── research/                信号源调研报告
 ```
 
-## 四、信号源接入策略（基于调研）
+## 四、信号源接入策略
 
 | 信号源 | 实时性 | 鉴权 | 优先级 | 接入方案 |
 |---|---|---|---|---|
@@ -66,9 +65,9 @@ copy_trader/
 | **Binance 隐藏持仓** | 视情况 | 用户 Cookie | P2 | SVIP 自带 cookie |
 | **币Coin** | 不可控 | 用户名/密码 | P2 | 代理登录爬取 |
 
-## 五、对标功能 Checklist（来自 Galaxy 报告）
+## 五、核心功能 Checklist
 
-### A. 跟单引擎核心参数（**必须 1:1 还原**）
+### A. 跟单引擎核心参数（20+ 项完整实现）
 - 资金管理：固定金额 / 全仓 / 复利滚动
 - 跟单倍率（multiplier）
 - 启动策略：不复制 / 仅浮亏 / 全部
@@ -113,15 +112,15 @@ copy_trader/
 | **M5 信号源 P1/P2** | Day 31-45 | Binance leaderboard scraper + 币Coin 代理登录 + Bitget + Gate.io |
 | **M6 监控+部署** | Day 46-60 | Prometheus/Grafana + 多节点部署 + 出口 IP 池 |
 
-## 七、差异化（超越 Galaxy）
+## 七、产品差异化
 
-1. **Hyperliquid 一等公民**：原站"Hyperbot" tab 是空的；我们做 vault + 链上原生 + 0 信任跟单
-2. **链上聪明钱多链**：不仅 Hyperliquid，扩展到 GMX、dYdX、Arbitrum、Solana
+1. **Hyperliquid 一等公民**：vault + 链上原生 + 0 信任跟单
+2. **链上聪明钱多链**：覆盖 Hyperliquid、GMX、dYdX、Arbitrum、Solana
 3. **风控加强**：单笔最大滑点、API 健康检查、撤销孤儿单
 4. **可 self-host**：docker 一键部署
 5. **归因分析**：净值曲线、信号源叠加图、Sharpe/Calmar/MAR 全套指标
 6. **合规优先**：用户 Cookie/账号上传走显式 OAuth 授权 + 风险提示
 
-## 八、开发执行（已并发 Agent 启动）
+## 八、开发执行
 
 详见 `docs/dev_plan.md`。

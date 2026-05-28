@@ -5,7 +5,7 @@ Stateless API: each method takes the relevant runtime state, returns a
 those decisions (sending close orders, decaying multiplier, pausing the
 config in PG).
 
-Galaxy report section 3.4 maps to the following fields:
+The copy-config schema maps to the following fields:
 
     tp / sl ::
         {"enabled": bool,

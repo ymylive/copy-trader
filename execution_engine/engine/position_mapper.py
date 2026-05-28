@@ -8,7 +8,7 @@ This module is **pure**: it does no IO, only math. Inputs are:
 
 It returns a list of :class:`OrderIntent` (the adapter layer handles execution).
 
-Implements the full Galaxy report section 3.4 spec:
+Implements the full copy-trade engine spec:
     - money_mode: fixed / full / compound
     - multiplier
     - initial_strategy: none / only_loss / all  (applied on first snapshot only)

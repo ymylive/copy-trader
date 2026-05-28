@@ -1,7 +1,7 @@
 """Position-mapping algebra tests.
 
 These are the most important tests in the codebase — they verify all
-20+ knobs from the Galaxy report section 3.4 actually combine correctly.
+20+ knobs from the engine spec actually combine correctly.
 """
 from __future__ import annotations
 
