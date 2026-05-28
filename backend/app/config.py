@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     referral_half_price: float = 0.5
     coupon_default_discount: float = 0.85
 
+    # ── Internal service-to-service auth ───────────────────────────────
+    # Shared secret between execution_engine and backend for POST /internal/*
+    internal_token: str = "dev-internal-token-change-me"
+
     # ── Feature flags ──────────────────────────────────────────────────
     skip_db_startup_check: bool = True   # allow dev start without DB
     enable_scheduler: bool = False        # APScheduler off in tests

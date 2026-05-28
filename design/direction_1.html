@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>COPY//TRADER · BLOOMBERG TERMINAL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#0A0E14;
+    --bg-2:#0E131B;
+    --bg-3:#11171F;
+    --amber:#FFB400;
+    --amber-dim:#8A6200;
+    --green:#22C55E;
+    --red:#EF4444;
+    --fg:#E6E8EA;
+    --fg-2:#A2A8B2;
+    --fg-3:#6B7280;
+    --fg-4:#3E4651;
+    --line:rgba(255,255,255,0.08);
+    --line-strong:rgba(255,255,255,0.16);
+    --mono:'JetBrains Mono','IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{
+    background:var(--bg);color:var(--fg);
+    font-family:var(--mono);
+    font-feature-settings:"tnum","cv02","cv03","cv04";
+    font-variant-numeric:tabular-nums;
+    font-size:13px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    scroll-behavior:smooth;
+  }
+  body{overflow-x:hidden;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:var(--mono);cursor:pointer;border:0;background:none;color:inherit;}
+  input,select,textarea{font-family:var(--mono);}
+
+  /* ====== STATUS BAR ====== */
+  .status-bar{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    background:var(--bg);border-bottom:1px solid var(--line);
+    font-size:11px;color:var(--fg-3);letter-spacing:0.04em;
+    height:22px;display:flex;align-items:center;
+    padding:0 18px;gap:18px;text-transform:uppercase;
+  }
+  .status-bar .dot{display:inline-block;width:6px;height:6px;background:var(--green);margin-right:6px;vertical-align:middle;}
+  .status-bar .dot-amber{background:var(--amber);}
+  .status-bar .sep{color:var(--fg-4);}
+  .status-bar .right{margin-left:auto;display:flex;gap:18px;align-items:center;}
+
+  /* ====== TOP NAV / TAB ====== */
+  .topnav{
+    position:fixed;top:22px;left:0;right:0;z-index:99;
+    background:var(--bg);border-bottom:1px solid var(--line);
+    height:52px;display:flex;align-items:center;padding:0 18px;
+  }
+  .wordmark{font-size:16px;font-weight:700;letter-spacing:0.02em;color:var(--fg);}
+  .wordmark .slash{color:var(--amber);}
+  .wordmark .ver{font-size:10px;color:var(--fg-3);margin-left:8px;letter-spacing:0.08em;}
+  .nav-tabs{display:flex;gap:0;margin-left:36px;height:52px;}
+  .nav-tab{
+    height:52px;display:flex;align-items:center;padding:0 18px;
+    font-size:12px;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--fg-2);border:0;background:none;
+    border-bottom:2px solid transparent;
+    transition:color 80ms linear;
+  }
+  .nav-tab:hover{color:var(--fg);}
+  .nav-tab.active{color:var(--amber);border-bottom-color:var(--amber);}
+  .nav-tab .idx{color:var(--fg-4);margin-right:8px;}
+  .topnav .right{margin-left:auto;display:flex;gap:18px;align-items:center;font-size:11px;color:var(--fg-3);letter-spacing:0.04em;text-transform:uppercase;}
+  .topnav .pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:3px 8px;border:1px solid var(--line-strong);
+    color:var(--fg-2);font-size:10px;letter-spacing:0.08em;
+  }
+  .topnav .pill .dot{width:5px;height:5px;background:var(--green);}
+
+  /* ====== LATENCY BADGE (re-usable) ====== */
+  .badge{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:2px 7px;border:1px solid var(--line-strong);
+    font-size:10px;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--fg-2);
+  }
+  .badge.amber{color:var(--amber);border-color:rgba(255,180,0,0.4);}
+  .badge.green{color:var(--green);border-color:rgba(34,197,94,0.35);}
+  .badge.red{color:var(--red);border-color:rgba(239,68,68,0.35);}
+  .badge .dot{width:5px;height:5px;background:currentColor;}
+
+  /* ====== CURSOR ====== */
+  .cursor{display:inline-block;color:var(--amber);animation:blink 1s steps(2,start) infinite;font-weight:700;margin-left:2px;}
+  @keyframes blink{to{visibility:hidden;}}
+
+  /* ====== SECTION ====== */
+  section{padding:74px 18px 36px;min-height:100vh;border-bottom:1px solid var(--line);}
+  .sec-head{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:18px;}
+  .sec-title{font-size:11px;color:var(--fg-3);letter-spacing:0.12em;text-transform:uppercase;}
+  .sec-title .amber{color:var(--amber);}
+  .sec-coord{font-size:10px;color:var(--fg-4);letter-spacing:0.08em;text-transform:uppercase;}
+
+  /* ====== HERO ====== */
+  #hero{padding-top:88px;padding-bottom:24px;min-height:100vh;display:flex;flex-direction:column;}
+  .hero-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:24px;flex:1;}
+  .hero-left{display:flex;flex-direction:column;}
+  .hero-meta{font-size:10px;color:var(--fg-3);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:18px;display:flex;gap:10px;align-items:center;}
+  .hero-meta .amber{color:var(--amber);}
+  .hero-h1{
+    font-size:60px;line-height:1.04;letter-spacing:-0.025em;
+    font-weight:500;color:var(--fg);
+    font-feature-settings:"ss01";
+  }
+  .hero-h1 .em{color:var(--amber);}
+  .hero-h1 .dim{color:var(--fg-3);}
+  .hero-sub{
+    margin-top:22px;font-size:14px;color:var(--fg-2);
+    letter-spacing:0.01em;max-width:560px;line-height:1.6;
+  }
+  .hero-sub .sep{color:var(--fg-4);margin:0 8px;}
+
+  .hero-badges{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:36px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .hbadge{padding:18px 16px;border-right:1px solid var(--line);}
+  .hbadge:last-child{border-right:0;}
+  .hbadge .lbl{font-size:10px;color:var(--fg-3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;}
+  .hbadge .val{font-size:30px;font-weight:600;letter-spacing:-0.01em;color:var(--fg);}
+  .hbadge .val .unit{font-size:14px;color:var(--fg-3);margin-left:4px;letter-spacing:0;}
+  .hbadge .delta{font-size:11px;color:var(--green);margin-top:6px;letter-spacing:0.02em;}
+  .hbadge .delta.amber{color:var(--amber);}
+
+  .hero-ctas{margin-top:28px;display:flex;gap:12px;}
+  .btn{
+    height:40px;padding:0 18px;display:inline-flex;align-items:center;gap:8px;
+    font-size:12px;letter-spacing:0.1em;text-transform:uppercase;font-weight:500;
+    border:1px solid var(--amber);background:var(--amber);color:#0A0E14;
+    transition:filter 120ms linear,transform 120ms linear;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn.ghost{background:transparent;color:var(--fg);border-color:var(--line-strong);}
+  .btn.ghost:hover{border-color:var(--amber);color:var(--amber);}
+  .btn .arrow{color:inherit;}
+
+  .hero-footnote{margin-top:28px;font-size:10px;color:var(--fg-4);letter-spacing:0.08em;text-transform:uppercase;display:flex;gap:14px;flex-wrap:wrap;}
+  .hero-footnote span{display:inline-flex;align-items:center;gap:6px;}
+  .hero-footnote .num{color:var(--fg-2);}
+
+  .hero-right{display:flex;flex-direction:column;gap:14px;}
+  .panel{border:1px solid var(--line);background:var(--bg-2);}
+  .panel-head{
+    height:28px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--line);font-size:10px;color:var(--fg-3);
+    letter-spacing:0.12em;text-transform:uppercase;
+  }
+  .panel-head .right{display:flex;gap:8px;align-items:center;}
+  .panel-body{padding:12px;}
+
+  #hero-chart{height:260px;}
+
+  .log{
+    font-family:var(--mono);font-size:11px;line-height:1.7;
+    color:var(--fg-2);max-height:240px;overflow:hidden;
+  }
+  .log .ts{color:var(--fg-4);}
+  .log .ev-fill{color:var(--green);}
+  .log .ev-sig{color:var(--amber);}
+  .log .ev-sub{color:var(--fg-2);}
+  .log .ev-err{color:var(--red);}
+  .log .ev-warn{color:#F59E0B;}
+  .log b{color:var(--fg);font-weight:500;}
+
+  /* ====== DASHBOARD ====== */
+  .asset-row{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  .asset-cell{padding:18px 18px;border-right:1px solid var(--line);}
+  .asset-cell:last-child{border-right:0;}
+  .asset-cell .k{font-size:10px;color:var(--fg-3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;}
+  .asset-cell .v{font-size:26px;font-weight:600;letter-spacing:-0.01em;color:var(--fg);}
+  .asset-cell .v .unit{font-size:11px;color:var(--fg-3);margin-left:4px;letter-spacing:0;}
+  .asset-cell .v.green{color:var(--green);}
+  .asset-cell .v.amber{color:var(--amber);}
+  .asset-cell .sub{font-size:10px;color:var(--fg-3);letter-spacing:0.08em;text-transform:uppercase;margin-top:6px;}
+  .asset-cell .sub .green{color:var(--green);}
+
+  .dash-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;margin-top:18px;}
+  #equity-chart{height:380px;}
+
+  .widget-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);}
+  .widget{
+    padding:12px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    display:flex;flex-direction:column;gap:6px;min-height:88px;
+  }
+  .widget:nth-child(2n){border-right:0;}
+  .widget:nth-last-child(-n+2){border-bottom:0;}
+  .widget .lbl{font-size:9px;color:var(--fg-3);letter-spacing:0.14em;text-transform:uppercase;display:flex;justify-content:space-between;}
+  .widget .lbl .src{color:var(--fg-4);}
+  .widget .v{font-size:18px;font-weight:600;color:var(--fg);}
+  .widget .v.green{color:var(--green);}
+  .widget .v.red{color:var(--red);}
+  .widget .v.amber{color:var(--amber);}
+  .widget .meta{font-size:10px;color:var(--fg-3);letter-spacing:0.04em;display:flex;gap:8px;align-items:center;}
+  .widget .meta .green{color:var(--green);}
+  .widget .meta .red{color:var(--red);}
+  .widget .bar-row{display:flex;height:4px;background:var(--bg-3);overflow:hidden;}
+  .widget .bar-row .seg-g{background:var(--green);}
+  .widget .bar-row .seg-r{background:var(--red);}
+  .widget .spark{height:18px;width:100%;}
+
+  .news-flow{margin-top:18px;border:1px solid var(--line);}
+  .news-head{padding:8px 12px;border-bottom:1px solid var(--line);font-size:10px;color:var(--fg-3);letter-spacing:0.12em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
+  .news-row{
+    display:grid;grid-template-columns:130px 80px 1fr 70px;gap:14px;
+    padding:7px 12px;border-bottom:1px solid var(--line);font-size:12px;
+    color:var(--fg-2);align-items:center;
+  }
+  .news-row:last-child{border-bottom:0;}
+  .news-row:hover{background:var(--bg-2);}
+  .news-row .t{color:var(--fg-4);font-size:11px;}
+  .news-row .src{font-size:10px;color:var(--amber);letter-spacing:0.1em;text-transform:uppercase;}
+  .news-row .src.red{color:var(--red);}
+  .news-row .src.green{color:var(--green);}
+  .news-row .body{color:var(--fg);}
+  .news-row .pct{text-align:right;font-size:11px;color:var(--fg-3);}
+  .news-row .pct.green{color:var(--green);}
+  .news-row .pct.red{color:var(--red);}
+
+  /* ====== TRADERS ====== */
+  .tr-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;}
+  .tr-tab{
+    height:36px;padding:0 16px;display:inline-flex;align-items:center;
+    font-size:11px;letter-spacing:0.12em;text-transform:uppercase;
+    color:var(--fg-2);border-bottom:2px solid transparent;background:none;border:0;
+  }
+  .tr-tab .cnt{color:var(--fg-4);margin-left:6px;}
+  .tr-tab.active{color:var(--amber);border-bottom:2px solid var(--amber);}
+  .tr-tab:hover{color:var(--fg);}
+
+  .tr-filters{display:flex;gap:14px;align-items:center;margin-bottom:14px;font-size:10px;color:var(--fg-3);letter-spacing:0.08em;text-transform:uppercase;}
+  .tr-filters .chip{padding:3px 8px;border:1px solid var(--line-strong);}
+  .tr-filters .chip.active{border-color:var(--amber);color:var(--amber);}
+  .tr-filters .right{margin-left:auto;display:flex;gap:14px;}
+
+  .tr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-left:1px solid var(--line);}
+  .tr-card{
+    border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:14px 14px;display:flex;flex-direction:column;gap:10px;
+    position:relative;background:var(--bg);transition:background 120ms linear;
+  }
+  .tr-card:hover{background:var(--bg-2);}
+  .tr-card.stale{opacity:0.5;}
+  .tr-card .topline{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .tr-card .tags{display:flex;gap:5px;}
+  .tr-card .tag{
+    font-size:9px;letter-spacing:0.12em;text-transform:uppercase;
+    padding:2px 6px;border:1px solid var(--line-strong);color:var(--fg-2);
+  }
+  .tr-card .tag.ex-okx{color:#1FCCB1;border-color:rgba(31,204,177,0.35);}
+  .tr-card .tag.ex-binance{color:#F0B90B;border-color:rgba(240,185,11,0.35);}
+  .tr-card .tag.src-bicoin{color:var(--amber);border-color:rgba(255,180,0,0.35);}
+  .tr-card .tag.src-hidden{color:var(--fg-3);}
+  .tr-card .tag.src-lead{color:#A78BFA;border-color:rgba(167,139,250,0.35);}
+  .tr-card .status{
+    font-size:9px;letter-spacing:0.14em;text-transform:uppercase;
+    padding:2px 6px;color:#0A0E14;background:var(--green);
+  }
+  .tr-card .status.stale{background:var(--fg-4);color:#0A0E14;}
+  .tr-card .status.flag{background:var(--red);}
+
+  .tr-card .uid{font-size:10px;color:var(--fg-3);letter-spacing:0.04em;font-family:var(--mono);}
+  .tr-card .name{font-size:18px;font-weight:600;letter-spacing:-0.005em;color:var(--fg);}
+  .tr-card .since{font-size:10px;color:var(--fg-3);letter-spacing:0.08em;text-transform:uppercase;}
+
+  .tr-card .pnl{
+    margin-top:4px;font-size:28px;font-weight:700;color:var(--amber);
+    letter-spacing:-0.02em;display:flex;align-items:baseline;gap:6px;
+  }
+  .tr-card .pnl.red{color:var(--red);}
+  .tr-card .pnl.zero{color:var(--fg-3);}
+  .tr-card .pnl .unit{font-size:11px;color:var(--fg-3);font-weight:400;letter-spacing:0;}
+  .tr-card .pnl-lbl{font-size:9px;color:var(--fg-3);letter-spacing:0.14em;text-transform:uppercase;}
+
+  .tr-card .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:0;margin-top:4px;border-top:1px solid var(--line);}
+  .tr-card .stat{padding:6px 0;border-bottom:1px solid var(--line);}
+  .tr-card .stat:nth-child(2n){border-left:1px solid var(--line);padding-left:8px;}
+  .tr-card .stat:nth-last-child(-n+2){border-bottom:0;}
+  .tr-card .stat .k{font-size:9px;color:var(--fg-3);letter-spacing:0.1em;text-transform:uppercase;}
+  .tr-card .stat .v{font-size:13px;color:var(--fg);font-weight:500;}
+  .tr-card .stat .v.green{color:var(--green);}
+  .tr-card .stat .v.red{color:var(--red);}
+
+  .tr-card .spark{height:18px;width:100%;}
+  .tr-card .actions{display:flex;gap:0;margin-top:6px;}
+  .tr-card .actions .btn-cp{
+    flex:1;height:30px;background:var(--amber);color:#0A0E14;font-size:11px;
+    letter-spacing:0.1em;text-transform:uppercase;font-weight:600;border:1px solid var(--amber);
+  }
+  .tr-card .actions .btn-cp:hover{filter:brightness(1.1);}
+  .tr-card .actions .btn-inv{
+    flex:1;height:30px;background:transparent;color:var(--fg);font-size:11px;
+    letter-spacing:0.1em;text-transform:uppercase;font-weight:500;border:1px solid var(--line-strong);border-left:0;
+  }
+  .tr-card .actions .btn-inv:hover{color:var(--red);border-color:var(--red);}
+  .tr-card .actions .btn-cp.initiating{
+    background:transparent;color:var(--amber);
+    animation:blink-bg 1s steps(2,start) infinite;
+  }
+  @keyframes blink-bg{50%{background:rgba(255,180,0,0.08);}}
+
+  /* ====== CONFIG MODAL ====== */
+  #config{position:relative;background:linear-gradient(transparent,transparent);}
+  .modal-overlay{
+    background:rgba(10,14,20,0.92);
+    border:1px solid var(--line);
+    max-width:920px;margin:0 auto;
+    position:relative;
+  }
+  .modal-head{
+    height:38px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--line);font-size:11px;color:var(--fg-2);
+    letter-spacing:0.12em;text-transform:uppercase;
+  }
+  .modal-head .left{display:flex;align-items:center;gap:10px;}
+  .modal-head .amber{color:var(--amber);}
+  .modal-head .x{font-size:14px;color:var(--fg-3);}
+
+  .modal-body{padding:0;}
+  .form-grp{
+    border-bottom:1px solid var(--line);padding:14px 16px;
+    display:grid;grid-template-columns:200px 1fr;gap:18px;
+  }
+  .form-grp:last-child{border-bottom:0;}
+  .form-grp .grp-title{
+    font-size:10px;color:var(--fg-3);letter-spacing:0.14em;text-transform:uppercase;
+  }
+  .form-grp .grp-title .num{color:var(--amber);margin-right:6px;}
+  .form-grp .grp-desc{font-size:10px;color:var(--fg-4);letter-spacing:0.04em;margin-top:6px;text-transform:none;}
+
+  .form-rows{display:flex;flex-direction:column;gap:10px;}
+  .form-row{display:grid;grid-template-columns:1fr;gap:6px;}
+  .form-row .lbl{font-size:10px;color:var(--fg-3);letter-spacing:0.12em;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+  .form-row .lbl .req{color:var(--amber);}
+  .form-row .val{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+  .radio-row{display:flex;gap:0;border:1px solid var(--line);}
+  .radio-row .opt{
+    flex:1;height:30px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:12px;color:var(--fg-2);border-right:1px solid var(--line);cursor:pointer;
+    letter-spacing:0.04em;
+  }
+  .radio-row .opt:last-child{border-right:0;}
+  .radio-row .opt.active{background:var(--amber);color:#0A0E14;font-weight:600;}
+  .radio-row .opt:not(.active):hover{background:var(--bg-2);color:var(--fg);}
+
+  .inp{
+    height:30px;background:var(--bg-2);border:1px solid var(--line);
+    color:var(--fg);padding:0 10px;font-size:13px;font-family:var(--mono);
+    outline:none;
+  }
+  .inp:focus{border-color:var(--amber);}
+  .inp.num{width:120px;text-align:right;font-variant-numeric:tabular-nums;}
+  .inp.suffix-wrap{display:inline-flex;align-items:center;}
+  .suffix{
+    height:30px;padding:0 10px;display:inline-flex;align-items:center;
+    background:var(--bg-3);border:1px solid var(--line);border-left:0;
+    font-size:11px;color:var(--fg-3);letter-spacing:0.04em;
+  }
+  .chip-input{
+    min-height:30px;background:var(--bg-2);border:1px solid var(--line);
+    padding:5px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  }
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--bg-3);border:1px solid var(--line-strong);
+    padding:2px 8px;font-size:11px;color:var(--fg-2);letter-spacing:0.04em;
+  }
+  .chip .x{color:var(--fg-4);cursor:pointer;}
+  .chip-input .ph{color:var(--fg-4);font-size:11px;}
+
+  .chk-row{display:flex;gap:18px;flex-wrap:wrap;}
+  .chk{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--fg-2);cursor:pointer;letter-spacing:0.02em;}
+  .chk .box{
+    width:13px;height:13px;border:1px solid var(--fg-4);
+    display:inline-flex;align-items:center;justify-content:center;
+    color:var(--amber);font-size:11px;line-height:1;
+  }
+  .chk.on .box{border-color:var(--amber);}
+  .chk.on{color:var(--fg);}
+
+  .modal-foot{
+    padding:14px 16px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .modal-foot .lhs{font-size:10px;color:var(--fg-4);letter-spacing:0.08em;text-transform:uppercase;}
+  .modal-foot .lhs .amber{color:var(--amber);}
+  .modal-foot .btns{display:flex;gap:10px;}
+  .modal-foot .btn{height:36px;}
+
+  /* ====== SECTION 4 backdrop ====== */
+  .config-backdrop{
+    position:relative;
+  }
+  .config-backdrop::before{
+    content:"";
+    position:absolute;inset:0;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent 0,
+        transparent 26px,
+        rgba(255,255,255,0.025) 26px,
+        rgba(255,255,255,0.025) 27px
+      );
+    pointer-events:none;
+    z-index:0;
+  }
+  .config-backdrop .modal-overlay{z-index:1;}
+
+  /* ====== SCROLLBAR ====== */
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--line-strong);}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+
+  /* utility */
+  .mono-lower{text-transform:lowercase;}
+  .amber{color:var(--amber);}
+  .green{color:var(--green);}
+  .red{color:var(--red);}
+  .dim{color:var(--fg-3);}
+  .uppercase{text-transform:uppercase;letter-spacing:0.1em;}
+
+  /* corner crops */
+  .corner{position:relative;}
+  .corner::before,.corner::after{
+    content:"";position:absolute;width:8px;height:8px;border:1px solid var(--amber);
+  }
+  .corner::before{top:-1px;left:-1px;border-right:0;border-bottom:0;}
+  .corner::after{bottom:-1px;right:-1px;border-left:0;border-top:0;}
+
+</style>
+</head>
+<body>
+
+<!-- ========== STATUS BAR ========== -->
+<div class="status-bar">
+  <span><span class="dot"></span>HOST ONLINE</span>
+  <span class="sep">|</span>
+  <span>REDIS 3.2K OPS/S</span>
+  <span class="sep">|</span>
+  <span>WS 1247 SUB</span>
+  <span class="sep">|</span>
+  <span>CPU 12%</span>
+  <span class="sep">|</span>
+  <span>MEM 4.1G / 16G</span>
+  <span class="sep">|</span>
+  <span><span class="dot dot-amber"></span>LATENCY 1.8MS</span>
+  <span class="right">
+    <span id="utc-clock">2026-05-28 10:32:56 UTC</span>
+    <span class="sep">|</span>
+    <span>UID 52494073</span>
+    <span class="sep">|</span>
+    <span>SVC 220D 13H</span>
+  </span>
+</div>
+
+<!-- ========== TOP NAV ========== -->
+<nav class="topnav">
+  <div class="wordmark">COPY<span class="slash">//</span>TRADER<span class="ver">v2.6.1 · BUILD 8941</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-target="hero"><span class="idx">01</span>HERO</button>
+    <button class="nav-tab" data-target="dashboard"><span class="idx">02</span>DASHBOARD</button>
+    <button class="nav-tab" data-target="traders"><span class="idx">03</span>TRADERS</button>
+    <button class="nav-tab" data-target="config"><span class="idx">04</span>CONFIG</button>
+  </div>
+  <div class="right">
+    <span class="pill"><span class="dot"></span>NET BTC-MAINNET</span>
+    <span>43.153.149.108</span>
+    <span class="sep">|</span>
+    <span>Maietry</span>
+  </div>
+</nav>
+
+<!-- ========== SECTION 1 · HERO ========== -->
+<section id="hero">
+  <div class="sec-head">
+    <div class="sec-title"><span class="amber">01 //</span> PUBLIC LANDING · MAIN ENTRY</div>
+    <div class="sec-coord">REF 0x4A.HERO · RENDERED <span id="render-ts">10:32:56.412</span></div>
+  </div>
+
+  <div class="hero-grid">
+    <!-- LEFT -->
+    <div class="hero-left">
+      <div class="hero-meta">
+        <span class="amber">●</span>
+        <span>SYS / COPY-TRADING-ENGINE</span>
+        <span class="sep">|</span>
+        <span>BUILD 8941</span>
+        <span class="sep">|</span>
+        <span>PRESS [TAB] TO NAVIGATE</span>
+      </div>
+
+      <h1 class="hero-h1">
+        cross-exchange copy trading.<br/>
+        with <span class="em">terminal-grade</span> execution.<span class="cursor">▌</span>
+      </h1>
+
+      <p class="hero-sub">
+        latency under 2 ms <span class="sep">·</span> 5 venues <span class="sep">·</span> 6 signal sources <span class="sep">·</span> zero profit share<br/>
+        engineered for the high-frequency tail of crypto derivatives. okx, binance, bitget, gate, hyperliquid — one console, one execution path.
+      </p>
+
+      <!-- BADGES -->
+      <div class="hero-badges">
+        <div class="hbadge">
+          <div class="lbl">Active Followers</div>
+          <div class="val">15 847</div>
+          <div class="delta">+312 / 24h</div>
+        </div>
+        <div class="hbadge">
+          <div class="lbl">Median Execution</div>
+          <div class="val">&lt;2<span class="unit">ms</span></div>
+          <div class="delta amber">P99 4.1 MS</div>
+        </div>
+        <div class="hbadge">
+          <div class="lbl">30D Copied Volume</div>
+          <div class="val">$284M<span class="unit">+</span></div>
+          <div class="delta">+18.4% MoM</div>
+        </div>
+      </div>
+
+      <div class="hero-ctas">
+        <button class="btn">START TRIAL <span class="arrow">→</span></button>
+        <button class="btn ghost">READ DOCS <span class="arrow">↗</span></button>
+      </div>
+
+      <div class="hero-footnote">
+        <span><span class="num">[01]</span> SOC 2 TYPE II</span>
+        <span><span class="num">[02]</span> ZERO PROFIT SHARE</span>
+        <span><span class="num">[03]</span> NON-CUSTODIAL · API KEYS LOCAL</span>
+        <span><span class="num">[04]</span> 99.97% UPTIME · 90D</span>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="hero-right">
+      <div class="panel">
+        <div class="panel-head">
+          <span>BTC-USDT-SWAP · OKX · 1M</span>
+          <div class="right">
+            <span class="badge amber"><span class="dot"></span>LIVE</span>
+            <span>LAT 1.8MS</span>
+          </div>
+        </div>
+        <div class="panel-body" style="padding:0;">
+          <div id="hero-chart"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span>EXECUTION FEED · /var/log/exec.tail</span>
+          <div class="right">
+            <span>247 EVT/S</span>
+            <span class="badge green"><span class="dot"></span>STREAM</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="log" id="exec-log">
+<div><span class="ts">[10:32:56.412]</span> <span class="ev-fill">FILL    </span> <b>BTC-USDT-SWAP</b>  LONG   0.025   ENTRY 74 180.50  px@mkt</div>
+<div><span class="ts">[10:32:56.218]</span> <span class="ev-sig">SIGNAL  </span> <b>okx:79346</b> open  short  ETH-USDT-SWAP  3.20x</div>
+<div><span class="ts">[10:32:55.901]</span> <span class="ev-sub">SUBSCR  </span> <b>hyperliquid:0xab...c3</b> positions  ws://...</div>
+<div><span class="ts">[10:32:55.704]</span> <span class="ev-fill">FILL    </span> <b>SOL-USDT-SWAP</b>  LONG   12.4    ENTRY 158.42   px@mkt</div>
+<div><span class="ts">[10:32:55.501]</span> <span class="ev-sig">SIGNAL  </span> <b>binance:369319</b> add  long  BTC-USDT-SWAP  +0.5x</div>
+<div><span class="ts">[10:32:55.319]</span> <span class="ev-warn">DRIFT   </span> <b>okx:1030294</b> slippage 0.08% &lt; tol 0.15%</div>
+<div><span class="ts">[10:32:55.102]</span> <span class="ev-fill">CLOSE   </span> <b>ETH-USDT-SWAP</b>  SHORT  1.50    EXIT  2 412.10  pnl +$42.18</div>
+<div><span class="ts">[10:32:54.918]</span> <span class="ev-sub">SUBSCR  </span> <b>binance:smart-money</b> top-50 wallets</div>
+<div><span class="ts">[10:32:54.711]</span> <span class="ev-sig">SIGNAL  </span> <b>okx:951891</b> reduce  long  SOL-USDT-SWAP  -0.30x</div>
+<div><span class="ts">[10:32:54.502]</span> <span class="ev-fill">FILL    </span> <b>DOGE-USDT-SWAP</b> SHORT  2840    ENTRY 0.142 09  px-better 0.04%</div>
+<div><span class="ts">[10:32:54.317]</span> <span class="ev-err">REJECT  </span> <b>bitmex:XBTUSD</b> insufficient margin · skipped</div>
+<div><span class="ts">[10:32:54.118]</span> <span class="ev-sub">HEARTBEAT</span> <b>redis://signal-bus</b> 3187 ops/s · OK</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== SECTION 2 · DASHBOARD ========== -->
+<section id="dashboard">
+  <div class="sec-head">
+    <div class="sec-title"><span class="amber">02 //</span> OPERATOR CONSOLE · ACCOUNT 4 (Gate) · STANDARD</div>
+    <div class="sec-coord">REFRESH 1s · WS BIND ✓ · LAT 1.8MS</div>
+  </div>
+
+  <!-- 4 asset cards -->
+  <div class="asset-row">
+    <div class="asset-cell">
+      <div class="k">Total Equity / USDT</div>
+      <div class="v">$32 771<span class="unit">.35</span></div>
+      <div class="sub">across <span style="color:var(--amber)">4 ACCOUNTS</span> · GATE / OKX / BINANCE / BYBIT</div>
+    </div>
+    <div class="asset-cell">
+      <div class="k">Cumulative PnL</div>
+      <div class="v green">+269 066<span class="unit">.53</span></div>
+      <div class="sub"><span class="green">+820.65%</span> SINCE 2024-08-12</div>
+    </div>
+    <div class="asset-cell">
+      <div class="k">PnL Today (UTC)</div>
+      <div class="v">$0<span class="unit">.00</span></div>
+      <div class="sub">12 ORDERS · 0 OPEN · 0.00% TURN</div>
+    </div>
+    <div class="asset-cell">
+      <div class="k">Bound Accounts</div>
+      <div class="v amber">4</div>
+      <div class="sub">3 ACTIVE · 1 PAUSED · 0 ERR</div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <!-- equity chart -->
+    <div class="panel">
+      <div class="panel-head">
+        <span>EQUITY CURVE · 60D · ACCOUNT 4 (GATE)</span>
+        <div class="right">
+          <span class="badge amber"><span class="dot"></span>+820.65%</span>
+          <span>SHARPE 2.41</span>
+          <span>MAX DD 4.32%</span>
+        </div>
+      </div>
+      <div class="panel-body" style="padding:0;">
+        <div id="equity-chart"></div>
+      </div>
+    </div>
+
+    <!-- widgets -->
+    <div>
+      <div class="widget-grid">
+        <div class="widget">
+          <div class="lbl"><span>BTC · SPOT</span><span class="src">BINANCE</span></div>
+          <div class="v">$74 180</div>
+          <div class="meta"><span class="red">-1.97%</span><span class="dim">24H · -$1 489</span></div>
+          <div class="spark" id="spark-btc"></div>
+        </div>
+        <div class="widget">
+          <div class="lbl"><span>FEAR &amp; GREED INDEX</span><span class="src">ALTERNATIVE.ME</span></div>
+          <div class="v red">22</div>
+          <div class="meta"><span class="red">EXTREME FEAR</span><span class="dim">PREV 31</span></div>
+          <div class="bar-row">
+            <div class="seg-r" style="width:22%;"></div>
+            <div style="width:78%;background:var(--bg-3);"></div>
+          </div>
+        </div>
+        <div class="widget">
+          <div class="lbl"><span>24H LIQUIDATIONS</span><span class="src">COINGLASS</span></div>
+          <div class="v red">$289M</div>
+          <div class="meta"><span class="dim">1H</span><span>$3.65M</span><span class="dim">·</span><span class="red">LONG 71%</span></div>
+          <div class="bar-row"><div class="seg-r" style="width:71%;"></div><div class="seg-g" style="width:29%;"></div></div>
+        </div>
+        <div class="widget">
+          <div class="lbl"><span>OPEN INTEREST</span><span class="src">3 VENUES</span></div>
+          <div class="v">$76.67B</div>
+          <div class="meta"><span class="dim">BINANCE</span><span>$75.05B</span></div>
+          <div class="meta"><span class="dim">BITMEX</span><span>$1.62B</span><span class="dim">·</span><span class="dim">OKX</span><span>$0</span></div>
+        </div>
+        <div class="widget">
+          <div class="lbl"><span>BTC QUARTERLY PREMIUM</span><span class="src">FUTURES</span></div>
+          <div class="v green">+$795</div>
+          <div class="meta"><span class="dim">OKX</span><span class="green">+$795</span><span class="dim">·</span><span class="dim">BINANCE</span><span class="green">+$203</span></div>
+          <div class="meta"><span class="dim">CONTANGO · CARRY +1.07% ANN</span></div>
+        </div>
+        <div class="widget">
+          <div class="lbl"><span>L/S RATIO · ACCOUNTS</span><span class="src">BINANCE</span></div>
+          <div class="v green">1.69</div>
+          <div class="meta"><span class="green">LONG 62.8%</span><span class="dim">·</span><span class="red">SHORT 37.2%</span></div>
+          <div class="bar-row"><div class="seg-g" style="width:62.8%;"></div><div class="seg-r" style="width:37.2%;"></div></div>
+        </div>
+        <div class="widget">
+          <div class="lbl"><span>BTC FUNDING RATE</span><span class="src">8H</span></div>
+          <div class="v green">+0.010%</div>
+          <div class="meta"><span class="dim">ANN. APR</span><span>+10.95%</span><span class="dim">·</span><span class="green">NORMAL</span></div>
+        </div>
+        <div class="widget">
+          <div class="lbl"><span>USDT OTC PREMIUM</span><span class="src">CN OTC</span></div>
+          <div class="v">¥6.780</div>
+          <div class="meta"><span class="green">+0.01%</span><span class="dim">vs USD 0.9989</span></div>
+          <div class="meta"><span class="dim">NET FLOW</span><span class="green">+$8.4M / 1H</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- News flow -->
+  <div class="news-flow">
+    <div class="news-head">
+      <span>NEWS STREAM · ALL VENUES · 47 EVT / 24H</span>
+      <span><span class="amber">●</span> LIVE · BUFFER 12K</span>
+    </div>
+    <div class="news-row">
+      <div class="t">2026-05-28 10:32:14</div>
+      <div class="src">CME</div>
+      <div class="body">Bitcoin futures basis narrows to 4.2% as institutional demand cools; CME large traders trim long exposure 1.8B notional.</div>
+      <div class="pct red">-1.97%</div>
+    </div>
+    <div class="news-row">
+      <div class="t">2026-05-28 10:28:55</div>
+      <div class="src red">LIQUIDATE</div>
+      <div class="body">Hyperliquid · whale wallet 0x4af...e21 liquidated $42.8M ETH-PERP long at 2 404.18 · cascade triggered 19 sub-orders.</div>
+      <div class="pct red">-3.41%</div>
+    </div>
+    <div class="news-row">
+      <div class="t">2026-05-28 10:21:03</div>
+      <div class="src green">SEC</div>
+      <div class="body">SEC commissioner signals openness to spot-ETH staking ETF amendment; comment window closes 06-14.</div>
+      <div class="pct green">+0.84%</div>
+    </div>
+    <div class="news-row">
+      <div class="t">2026-05-28 10:14:47</div>
+      <div class="src">COINGLASS</div>
+      <div class="body">Aggregate perp open interest reaches $76.67B, +4.1% w/w; BTC dominance of OI back to 58.3%.</div>
+      <div class="pct">+4.10%</div>
+    </div>
+    <div class="news-row">
+      <div class="t">2026-05-28 09:58:12</div>
+      <div class="src">FED</div>
+      <div class="body">Fed minutes show divided committee on QT taper pace · September dot-plot revision expected · USD index +0.31%.</div>
+      <div class="pct">+0.31%</div>
+    </div>
+    <div class="news-row">
+      <div class="t">2026-05-28 09:42:30</div>
+      <div class="src red">EXPLOIT</div>
+      <div class="body">Cross-chain bridge "Stargate-v3" suspends withdrawals after 3 800 ETH suspicious outflow · team investigating.</div>
+      <div class="pct red">-12.40%</div>
+    </div>
+    <div class="news-row">
+      <div class="t">2026-05-28 09:30:00</div>
+      <div class="src">MACRO</div>
+      <div class="body">US Q1 GDP final +1.4% vs consensus +1.2% · core PCE 3.7% · DXY rallies 0.4%.</div>
+      <div class="pct green">+0.40%</div>
+    </div>
+  </div>
+
+</section>
+
+
+<!-- ========== SECTION 3 · TRADERS ========== -->
+<section id="traders">
+  <div class="sec-head">
+    <div class="sec-title"><span class="amber">03 //</span> TRADER UNIVERSE · 348 LISTED · 6 SIGNAL SOURCES</div>
+    <div class="sec-coord">SORT BY PNL_30D ↓ · FILTER LIVE</div>
+  </div>
+
+  <div class="tr-tabs">
+    <button class="tr-tab active">ALL <span class="cnt">348</span></button>
+    <button class="tr-tab">BINANCE <span class="cnt">142</span></button>
+    <button class="tr-tab">SMART$ <span class="cnt">50</span></button>
+    <button class="tr-tab">OKX <span class="cnt">94</span></button>
+    <button class="tr-tab">BITGET <span class="cnt">28</span></button>
+    <button class="tr-tab">BICOIN <span class="cnt">23</span></button>
+    <button class="tr-tab">HYPERBOT <span class="cnt">11</span></button>
+  </div>
+
+  <div class="tr-filters">
+    <span class="chip active">LISTED ONLY</span>
+    <span class="chip">SHARPE ≥ 1.0</span>
+    <span class="chip">DD ≤ 15%</span>
+    <span class="chip">SCALE ≥ 10K</span>
+    <div class="right">
+      <span>VIEW: GRID</span>
+      <span class="sep dim">|</span>
+      <span class="dim">TABLE</span>
+      <span class="sep dim">|</span>
+      <span>SEARCH: <span class="cursor">▌</span></span>
+    </div>
+  </div>
+
+  <div class="tr-grid">
+
+    <!-- 1 茂茂大魔王 - active state -->
+    <div class="tr-card">
+      <div class="topline">
+        <div class="tags">
+          <span class="tag ex-okx">OKX</span>
+          <span class="tag src-bicoin">BICOIN</span>
+        </div>
+        <span class="status">LISTED</span>
+      </div>
+      <div class="uid">UID OKX:79346</div>
+      <div class="name">茂茂大魔王</div>
+      <div class="since">JOINED 2 209 DAYS · 2020-04-30</div>
+      <div class="pnl-lbl">CUMULATIVE PNL · USDT</div>
+      <div class="pnl">+1 343 829<span class="unit">.94</span></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ROI</div><div class="v green">+14 539.61%</div></div>
+        <div class="stat"><div class="k">AUM</div><div class="v">7 618.91</div></div>
+        <div class="stat"><div class="k">WIN RATE</div><div class="v">34.40%</div></div>
+        <div class="stat"><div class="k">MAX DD</div><div class="v green">2.57%</div></div>
+      </div>
+      <div class="spark" id="spark-tr1"></div>
+      <div class="actions">
+        <button class="btn-cp initiating">▌ INITIATING…</button>
+        <button class="btn-inv">INVERSE</button>
+      </div>
+    </div>
+
+    <!-- 2 风火山林Trader -->
+    <div class="tr-card">
+      <div class="topline">
+        <div class="tags">
+          <span class="tag ex-binance">BINANCE</span>
+          <span class="tag src-bicoin">BICOIN</span>
+        </div>
+        <span class="status">LISTED</span>
+      </div>
+      <div class="uid">UID BNB:369319</div>
+      <div class="name">风火山林Trader</div>
+      <div class="since">JOINED 1 705 DAYS · 2021-09-28</div>
+      <div class="pnl-lbl">CUMULATIVE PNL · USDT</div>
+      <div class="pnl">+1 927 532<span class="unit">.79</span></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ROI</div><div class="v green">+6 880.06%</div></div>
+        <div class="stat"><div class="k">AUM</div><div class="v">89 999.16</div></div>
+        <div class="stat"><div class="k">WIN RATE</div><div class="v">45.45%</div></div>
+        <div class="stat"><div class="k">MAX DD</div><div class="v">6.86%</div></div>
+      </div>
+      <div class="spark" id="spark-tr2"></div>
+      <div class="actions">
+        <button class="btn-cp">COPY</button>
+        <button class="btn-inv">INVERSE</button>
+      </div>
+    </div>
+
+    <!-- 3 牛的青山在 -->
+    <div class="tr-card">
+      <div class="topline">
+        <div class="tags">
+          <span class="tag ex-okx">OKX</span>
+          <span class="tag src-bicoin">BICOIN</span>
+        </div>
+        <span class="status">LISTED</span>
+      </div>
+      <div class="uid">UID OKX:1030294</div>
+      <div class="name">牛的青山在</div>
+      <div class="since">JOINED 899 DAYS · 2023-12-12</div>
+      <div class="pnl-lbl">CUMULATIVE PNL · USDT</div>
+      <div class="pnl">+297 089<span class="unit">.72</span></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ROI</div><div class="v green">+10 326.49%</div></div>
+        <div class="stat"><div class="k">AUM</div><div class="v">13 292.43</div></div>
+        <div class="stat"><div class="k">WIN RATE</div><div class="v green">75.00%</div></div>
+        <div class="stat"><div class="k">MAX DD</div><div class="v green">1.15%</div></div>
+      </div>
+      <div class="spark" id="spark-tr3"></div>
+      <div class="actions">
+        <button class="btn-cp">COPY</button>
+        <button class="btn-inv">INVERSE</button>
+      </div>
+    </div>
+
+    <!-- 4 寒星日照 -->
+    <div class="tr-card">
+      <div class="topline">
+        <div class="tags">
+          <span class="tag ex-okx">OKX</span>
+          <span class="tag src-bicoin">BICOIN</span>
+        </div>
+        <span class="status">LISTED</span>
+      </div>
+      <div class="uid">UID OKX:951891</div>
+      <div class="name">寒星日照</div>
+      <div class="since">JOINED 1 218 DAYS · 2023-01-26</div>
+      <div class="pnl-lbl">CUMULATIVE PNL · USDT</div>
+      <div class="pnl">+408 565<span class="unit">.96</span></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ROI</div><div class="v green">+343.37%</div></div>
+        <div class="stat"><div class="k">AUM</div><div class="v">138 001.32</div></div>
+        <div class="stat"><div class="k">WIN RATE</div><div class="v">43.33%</div></div>
+        <div class="stat"><div class="k">MAX DD</div><div class="v">14.51%</div></div>
+      </div>
+      <div class="spark" id="spark-tr4"></div>
+      <div class="actions">
+        <button class="btn-cp">COPY</button>
+        <button class="btn-inv">INVERSE</button>
+      </div>
+    </div>
+
+    <!-- 5 MaximizeSR -->
+    <div class="tr-card">
+      <div class="topline">
+        <div class="tags">
+          <span class="tag ex-binance">BINANCE</span>
+          <span class="tag src-hidden">HIDDEN</span>
+        </div>
+        <span class="status">LISTED</span>
+      </div>
+      <div class="uid">UID BNB:4120066087544364033</div>
+      <div class="name">MaximizeSR</div>
+      <div class="since">JOINED 653 DAYS · 2024-08-13</div>
+      <div class="pnl-lbl">90D PNL · USDT</div>
+      <div class="pnl red">-319<span class="unit">.96</span></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ROI 90D</div><div class="v red">-6.03%</div></div>
+        <div class="stat"><div class="k">AUM</div><div class="v">46 358.66</div></div>
+        <div class="stat"><div class="k">SHARPE</div><div class="v">0.06</div></div>
+        <div class="stat"><div class="k">WIN / DD</div><div class="v">51.29% / 9.15%</div></div>
+      </div>
+      <div class="spark" id="spark-tr5"></div>
+      <div class="actions">
+        <button class="btn-cp">COPY</button>
+        <button class="btn-inv">INVERSE</button>
+      </div>
+    </div>
+
+    <!-- 6 KNOTMAIN -->
+    <div class="tr-card">
+      <div class="topline">
+        <div class="tags">
+          <span class="tag ex-binance">BINANCE</span>
+          <span class="tag src-lead">LEAD</span>
+          <span class="tag src-hidden">HIDDEN</span>
+        </div>
+        <span class="status">LISTED</span>
+      </div>
+      <div class="uid">UID BNB:3779422221599733504</div>
+      <div class="name">KNOTMAIN</div>
+      <div class="since">JOINED ── DAYS · DATA WITHHELD</div>
+      <div class="pnl-lbl">90D PNL · USDT</div>
+      <div class="pnl">+365 404<span class="unit">.77</span></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ROI 90D</div><div class="v green">+53.51%</div></div>
+        <div class="stat"><div class="k">AUM</div><div class="v dim">NaN</div></div>
+        <div class="stat"><div class="k">SHARPE</div><div class="v green">3.20</div></div>
+        <div class="stat"><div class="k">WIN / DD</div><div class="v">57.83% / 13.32%</div></div>
+      </div>
+      <div class="spark" id="spark-tr6"></div>
+      <div class="actions">
+        <button class="btn-cp">COPY</button>
+        <button class="btn-inv">INVERSE</button>
+      </div>
+    </div>
+
+    <!-- 7 穩定暴擊 Crit -->
+    <div class="tr-card stale">
+      <div class="topline">
+        <div class="tags">
+          <span class="tag ex-binance">BINANCE</span>
+          <span class="tag src-hidden">HIDDEN</span>
+        </div>
+        <span class="status flag">STALE</span>
+      </div>
+      <div class="uid">UID BNB:4030560779244867073</div>
+      <div class="name">穩定暴擊 Crit</div>
+      <div class="since">JOINED 715 DAYS · 2024-06-12</div>
+      <div class="pnl-lbl">90D PNL · USDT</div>
+      <div class="pnl red">-102 513<span class="unit">.70</span></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ROI 90D</div><div class="v red">-57.91%</div></div>
+        <div class="stat"><div class="k">AUM</div><div class="v">69 091.23</div></div>
+        <div class="stat"><div class="k">SHARPE</div><div class="v red">-0.05</div></div>
+        <div class="stat"><div class="k">WIN / DD</div><div class="v red">32.76% / 69.91%</div></div>
+      </div>
+      <div class="spark" id="spark-tr7"></div>
+      <div class="actions">
+        <button class="btn-cp">COPY</button>
+        <button class="btn-inv">INVERSE</button>
+      </div>
+    </div>
+
+    <!-- 8 Melanya -->
+    <div class="tr-card">
+      <div class="topline">
+        <div class="tags">
+          <span class="tag ex-binance">BINANCE</span>
+          <span class="tag src-hidden">HIDDEN</span>
+        </div>
+        <span class="status">LISTED</span>
+      </div>
+      <div class="uid">UID BNB:3904393221729556225</div>
+      <div class="name">Melanya</div>
+      <div class="since">JOINED 802 DAYS · 2024-03-17</div>
+      <div class="pnl-lbl">90D PNL · USDT</div>
+      <div class="pnl zero">0<span class="unit">.00</span></div>
+      <div class="stats">
+        <div class="stat"><div class="k">ROI 90D</div><div class="v dim">0.00%</div></div>
+        <div class="stat"><div class="k">AUM</div><div class="v">10 177.62</div></div>
+        <div class="stat"><div class="k">SHARPE</div><div class="v red">-0.13</div></div>
+        <div class="stat"><div class="k">WIN / DD</div><div class="v dim">0.00% / 0.00%</div></div>
+      </div>
+      <div class="spark" id="spark-tr8"></div>
+      <div class="actions">
+        <button class="btn-cp">COPY</button>
+        <button class="btn-inv">INVERSE</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ========== SECTION 4 · CONFIG ========== -->
+<section id="config" class="config-backdrop">
+  <div class="sec-head">
+    <div class="sec-title"><span class="amber">04 //</span> TASK CONFIGURATION · NEW COPY JOB</div>
+    <div class="sec-coord">PRESS [ESC] TO ABORT · [ENTER] TO COMMIT</div>
+  </div>
+
+  <div class="modal-overlay">
+    <div class="modal-head">
+      <div class="left">
+        <span>TASK CONFIG</span>
+        <span class="dim">·</span>
+        <span>TRADER <span class="amber">OKX:79346 / 茂茂大魔王</span></span>
+        <span class="dim">·</span>
+        <span>CFG_01</span>
+      </div>
+      <div class="left">
+        <span class="badge green"><span class="dot"></span>DRAFT</span>
+        <span class="x">[ X ]</span>
+      </div>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- GROUP 01 · CAPITAL MODE -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">01</span>CAPITAL MODE</div>
+          <div class="grp-desc">how follower capital is allocated against each signal.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">MODE <span class="req">*</span></div>
+            <div class="val" style="width:100%;">
+              <div class="radio-row" style="width:100%;">
+                <div class="opt active">FIXED AMOUNT</div>
+                <div class="opt">FULL-MARGIN MIRROR</div>
+                <div class="opt">COMPOUND ROLL</div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">FIXED AMOUNT PER ORDER</div>
+            <div class="val">
+              <span class="inp-suffix" style="display:inline-flex;">
+                <input class="inp num" value="500.00" />
+                <span class="suffix">USDT</span>
+              </span>
+              <span class="dim">· MIN 50  MAX 10 000</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP 02 · BASIC SETTINGS -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">02</span>BASIC SETTINGS</div>
+          <div class="grp-desc">multiplier, replication scope, direction limit.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">COPY MULTIPLIER</div>
+            <div class="val">
+              <span style="display:inline-flex;">
+                <input class="inp num" value="1.00" />
+                <span class="suffix">× LEVERAGE</span>
+              </span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">START-UP REPLICATION</div>
+            <div class="val" style="width:100%;">
+              <div class="radio-row" style="width:100%;">
+                <div class="opt">NO COPY EXISTING</div>
+                <div class="opt active">COPY UNREALIZED LOSS ONLY</div>
+                <div class="opt">COPY ALL POSITIONS</div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">DIRECTION LIMIT</div>
+            <div class="val" style="width:100%;">
+              <div class="radio-row" style="width:100%;">
+                <div class="opt active">NO LIMIT</div>
+                <div class="opt">LONG ONLY</div>
+                <div class="opt">SHORT ONLY</div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">OPEN TRIGGER · PRICE</div>
+            <div class="val" style="width:100%;">
+              <div class="radio-row" style="width:60%;">
+                <div class="opt active">MARKET</div>
+                <div class="opt">LIMIT @ AVG</div>
+                <div class="opt">LIMIT @ LAST-ADD</div>
+              </div>
+              <span class="dim">·</span>
+              <span style="display:inline-flex;">
+                <input class="inp num" value="0.05" />
+                <span class="suffix">% BETTER THAN LEADER</span>
+              </span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">ADD-ON TRIGGER · PRICE</div>
+            <div class="val" style="width:100%;">
+              <div class="radio-row" style="width:60%;">
+                <div class="opt">MARKET</div>
+                <div class="opt active">LIMIT @ AVG</div>
+                <div class="opt">LIMIT @ LAST-ADD</div>
+              </div>
+              <span class="dim">·</span>
+              <span style="display:inline-flex;">
+                <input class="inp num" value="0.10" />
+                <span class="suffix">% BETTER</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP 03 · RISK -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">03</span>TAKE-PROFIT / STOP-LOSS</div>
+          <div class="grp-desc">per-position and per-job risk envelope.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">POSITION TAKE-PROFIT</div>
+            <div class="val" style="width:100%;">
+              <div class="radio-row" style="width:50%;">
+                <div class="opt">DISABLED</div>
+                <div class="opt active">CYCLIC TRIGGER</div>
+              </div>
+              <span class="dim">CLOSE</span>
+              <span style="display:inline-flex;">
+                <input class="inp num" value="30.00" />
+                <span class="suffix">% OF QTY</span>
+              </span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">POSITION STOP-LOSS</div>
+            <div class="val" style="width:100%;">
+              <div class="radio-row" style="width:50%;">
+                <div class="opt">DISABLED</div>
+                <div class="opt active">CYCLIC TRIGGER</div>
+              </div>
+              <span class="dim">CLOSE</span>
+              <span style="display:inline-flex;">
+                <input class="inp num" value="100.00" />
+                <span class="suffix">% OF QTY</span>
+              </span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">JOB LOSS THRESHOLD · USDT (ABS)</div>
+            <div class="val">
+              <span style="display:inline-flex;">
+                <input class="inp num" value="2 000.00" />
+                <span class="suffix">USDT</span>
+              </span>
+              <span class="dim">· AUTO-PAUSE WHEN BREACHED</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">SAFETY-CUSHION LOSS · MULT</div>
+            <div class="val">
+              <span style="display:inline-flex;">
+                <input class="inp num" value="3.5" />
+                <span class="suffix">× LEADER MM</span>
+              </span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">POST-TP REFILL</div>
+            <div class="val">
+              <label class="chk on"><span class="box">✓</span>RE-FILL POSITION WHEN PRICE RETURNS TO AVG</label>
+              <label class="chk on"><span class="box">✓</span>ALLOW SECOND TP AFTER RE-FILL</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP 04 · SYMBOL FILTER -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">04</span>SYMBOL FILTER</div>
+          <div class="grp-desc">leave empty to follow leader fully.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">BLACKLIST</div>
+            <div class="val" style="width:100%;">
+              <div class="chip-input" style="width:100%;">
+                <span class="chip">DOGE <span class="x">×</span></span>
+                <span class="chip">SHIB <span class="x">×</span></span>
+                <span class="chip">PEPE <span class="x">×</span></span>
+                <span class="ph">+ ADD SYMBOL</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">WHITELIST</div>
+            <div class="val" style="width:100%;">
+              <div class="chip-input" style="width:100%;">
+                <span class="chip">BTC <span class="x">×</span></span>
+                <span class="chip">ETH <span class="x">×</span></span>
+                <span class="chip">SOL <span class="x">×</span></span>
+                <span class="chip">BNB <span class="x">×</span></span>
+                <span class="ph">+ ADD SYMBOL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP 05 · NOTIFICATIONS -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">05</span>NOTIFICATIONS</div>
+          <div class="grp-desc">delivery channel + event subscriptions.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">DELIVERY CHANNEL</div>
+            <div class="val" style="width:100%;">
+              <div class="radio-row" style="width:60%;">
+                <div class="opt">SILENT</div>
+                <div class="opt">EMAIL</div>
+                <div class="opt active">TELEGRAM BOT</div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">EVENT SUBSCRIPTIONS</div>
+            <div class="val">
+              <div class="chk-row">
+                <label class="chk on"><span class="box">✓</span>ORDER FILLED</label>
+                <label class="chk on"><span class="box">✓</span>ORDER REJECTED</label>
+                <label class="chk on"><span class="box">✓</span>RISK TRIGGER</label>
+                <label class="chk on"><span class="box">✓</span>TP / SL HIT</label>
+                <label class="chk"><span class="box"></span>LEADER MARGIN CHG</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-foot">
+      <div class="lhs">CFG_HASH 0x9A4F.8D21 · DRY-RUN ENABLED · <span class="amber">VALIDATED ✓</span></div>
+      <div class="btns">
+        <button class="btn ghost">CANCEL</button>
+        <button class="btn">START COPY <span class="arrow">→</span></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<script>
+/* ============================================
+   01 · LIVE UTC CLOCK
+============================================ */
+function pad(n){return n<10?'0'+n:n;}
+function tickClock(){
+  const d=new Date();
+  const s = d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())
+          +' '+pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds())+' UTC';
+  const el=document.getElementById('utc-clock'); if(el) el.textContent=s;
+}
+setInterval(tickClock,1000); tickClock();
+
+/* ============================================
+   02 · TAB SCROLL
+============================================ */
+const tabs=document.querySelectorAll('.nav-tab');
+tabs.forEach(t=>{
+  t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const el=document.getElementById(t.dataset.target);
+    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+
+window.addEventListener('scroll',()=>{
+  const secs=['hero','dashboard','traders','config'];
+  let cur='hero';
+  for(const id of secs){
+    const el=document.getElementById(id);
+    if(!el) continue;
+    const r=el.getBoundingClientRect();
+    if(r.top<=140) cur=id;
+  }
+  tabs.forEach(t=>{
+    t.classList.toggle('active', t.dataset.target===cur);
+  });
+});
+
+/* ============================================
+   03 · ECHARTS — HERO CANDLE
+============================================ */
+function genCandles(n, start){
+  let p=start;
+  const out=[];
+  for(let i=0;i<n;i++){
+    const o=p;
+    const ch=(Math.random()-0.48)*180;
+    const c=o+ch;
+    const h=Math.max(o,c)+Math.random()*60;
+    const l=Math.min(o,c)-Math.random()*60;
+    out.push([o.toFixed(2),c.toFixed(2),l.toFixed(2),h.toFixed(2)]);
+    p=c;
+  }
+  return out;
+}
+function genTimes(n){
+  const out=[];
+  const base=new Date('2026-05-28T10:00:00Z').getTime();
+  for(let i=0;i<n;i++){
+    const d=new Date(base + i*60000);
+    out.push(pad(d.getUTCHours())+':'+pad(d.getUTCMinutes()));
+  }
+  return out;
+}
+
+const heroChart=echarts.init(document.getElementById('hero-chart'),null,{renderer:'canvas'});
+const candles=genCandles(60,74000);
+heroChart.setOption({
+  backgroundColor:'transparent',
+  grid:{left:42,right:48,top:14,bottom:24},
+  textStyle:{fontFamily:"JetBrains Mono, monospace",color:"#6B7280",fontSize:10},
+  xAxis:{
+    type:'category',
+    data:genTimes(60),
+    axisLine:{lineStyle:{color:'rgba(255,255,255,0.08)'}},
+    axisTick:{show:false},
+    axisLabel:{color:'#6B7280',fontSize:9,interval:9},
+    splitLine:{show:false}
+  },
+  yAxis:{
+    scale:true,position:'right',
+    axisLine:{show:false},
+    axisTick:{show:false},
+    axisLabel:{color:'#6B7280',fontSize:9,formatter:v=>v.toFixed(0)},
+    splitLine:{lineStyle:{color:'rgba(255,255,255,0.05)'}}
+  },
+  tooltip:{
+    trigger:'axis',
+    backgroundColor:'#0A0E14',
+    borderColor:'#FFB400',
+    borderWidth:1,
+    textStyle:{color:'#E6E8EA',fontFamily:'JetBrains Mono',fontSize:11}
+  },
+  series:[{
+    type:'candlestick',
+    data:candles,
+    itemStyle:{
+      color:'#22C55E',color0:'#EF4444',
+      borderColor:'#22C55E',borderColor0:'#EF4444',
+      borderWidth:1
+    },
+    barWidth:'62%'
+  }]
+});
+
+/* ============================================
+   04 · ECHARTS — EQUITY CURVE 60D
+============================================ */
+function genEquity(n, start){
+  let p=start;const out=[];
+  for(let i=0;i<n;i++){
+    p += p*((Math.random()-0.42)*0.05);
+    out.push(+p.toFixed(2));
+  }
+  return out;
+}
+function genDates(n){
+  const out=[];
+  const base=new Date('2026-03-29T00:00:00Z').getTime();
+  for(let i=0;i<n;i++){
+    const d=new Date(base + i*86400000);
+    out.push(pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate()));
+  }
+  return out;
+}
+const equityChart=echarts.init(document.getElementById('equity-chart'),null,{renderer:'canvas'});
+const eq=genEquity(60,3500);
+equityChart.setOption({
+  backgroundColor:'transparent',
+  grid:{left:62,right:24,top:22,bottom:30},
+  textStyle:{fontFamily:'JetBrains Mono',color:'#6B7280',fontSize:10},
+  xAxis:{
+    type:'category',data:genDates(60),
+    axisLine:{lineStyle:{color:'rgba(255,255,255,0.08)'}},
+    axisTick:{show:false},
+    axisLabel:{color:'#6B7280',fontSize:9,interval:6},
+    splitLine:{show:false}
+  },
+  yAxis:{
+    scale:true,
+    axisLine:{show:false},
+    axisTick:{show:false},
+    axisLabel:{color:'#6B7280',fontSize:9,formatter:v=>'$'+(v/1000).toFixed(1)+'k'},
+    splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}
+  },
+  tooltip:{
+    trigger:'axis',
+    backgroundColor:'#0A0E14',
+    borderColor:'#FFB400',borderWidth:1,
+    textStyle:{color:'#E6E8EA',fontFamily:'JetBrains Mono',fontSize:11},
+    formatter:p=>p[0].axisValue+'<br/>EQUITY <span style="color:#FFB400">$'+p[0].data.toLocaleString('en-US',{minimumFractionDigits:2})+'</span>'
+  },
+  series:[
+    {
+      type:'line',data:eq,
+      symbol:'none',smooth:false,
+      lineStyle:{color:'#FFB400',width:1.5},
+      areaStyle:{
+        color:{
+          type:'linear',x:0,y:0,x2:0,y2:1,
+          colorStops:[
+            {offset:0,color:'rgba(255,180,0,0.18)'},
+            {offset:1,color:'rgba(255,180,0,0.0)'}
+          ]
+        }
+      },
+      markLine:{
+        symbol:'none',
+        lineStyle:{color:'rgba(34,197,94,0.4)',type:'dashed',width:1},
+        data:[{yAxis:eq[0],label:{formatter:'ENTRY $'+eq[0].toFixed(0),color:'#22C55E',fontSize:9,fontFamily:'JetBrains Mono',position:'insideStartTop'}}]
+      }
+    }
+  ]
+});
+
+/* ============================================
+   05 · SPARKLINES (BTC + 8 traders)
+============================================ */
+function spark(id, base, vol, color){
+  const el=document.getElementById(id); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'canvas'});
+  const data=[]; let p=base;
+  for(let i=0;i<40;i++){ p += p*((Math.random()-0.48)*vol); data.push(+p.toFixed(2));}
+  c.setOption({
+    backgroundColor:'transparent',
+    grid:{left:0,right:0,top:2,bottom:2},
+    xAxis:{type:'category',show:false,data:data.map((_,i)=>i)},
+    yAxis:{type:'value',show:false,scale:true},
+    tooltip:{show:false},
+    series:[{
+      type:'line',data,symbol:'none',smooth:false,
+      lineStyle:{color:color||'#FFB400',width:1}
+    }]
+  });
+}
+spark('spark-btc',74180,0.012,'#EF4444');
+spark('spark-tr1',1000,0.04,'#FFB400');
+spark('spark-tr2',1000,0.045,'#FFB400');
+spark('spark-tr3',1000,0.03,'#22C55E');
+spark('spark-tr4',1000,0.038,'#FFB400');
+spark('spark-tr5',1000,0.025,'#EF4444');
+spark('spark-tr6',1000,0.035,'#22C55E');
+spark('spark-tr7',1000,0.06,'#EF4444');
+spark('spark-tr8',1000,0.001,'#6B7280');
+
+/* ============================================
+   06 · RESIZE
+============================================ */
+window.addEventListener('resize',()=>{
+  heroChart.resize(); equityChart.resize();
+});
+
+/* ============================================
+   07 · CHECKBOX TOGGLE
+============================================ */
+document.querySelectorAll('.chk').forEach(c=>{
+  c.addEventListener('click',e=>{
+    c.classList.toggle('on');
+    c.querySelector('.box').textContent = c.classList.contains('on') ? '✓' : '';
+  });
+});
+
+/* ============================================
+   08 · RADIO TOGGLE
+============================================ */
+document.querySelectorAll('.radio-row').forEach(row=>{
+  row.querySelectorAll('.opt').forEach(o=>{
+    o.addEventListener('click',()=>{
+      row.querySelectorAll('.opt').forEach(x=>x.classList.remove('active'));
+      o.classList.add('active');
+    });
+  });
+});
+
+</script>
+</body>
+</html>

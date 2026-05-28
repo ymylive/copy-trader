@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Copy Trader — Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,wght@1,300;1,400;1,500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#0F1419;
+    --bg-1:#161A20;
+    --bg-2:#1F242B;
+    --bg-3:#2A2F37;
+    --line:rgba(255,255,255,0.06);
+    --line-2:rgba(255,255,255,0.10);
+    --ink-1:#F7F7F4;
+    --ink-2:#E5E7EB;
+    --ink-3:#D1D5DB;
+    --ink-4:#9CA3AF;
+    --ink-5:#6B7280;
+    --ink-6:#4B5563;
+    --emerald:#0F766E;
+    --emerald-2:#14B8A6;
+    --up:#15803D;
+    --down:#991B1B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink-2);font-family:'Inter',system-ui,sans-serif;font-weight:400;-webkit-font-smoothing:antialiased;font-feature-settings:'ss01','cv11';}
+  body{font-size:14px;line-height:1.5;letter-spacing:-0.005em}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;background:none;border:none;color:inherit;cursor:pointer}
+  ::selection{background:var(--emerald);color:#fff}
+
+  /* ============ TYPE ============ */
+  .h-title{font-family:'Inter Tight',sans-serif;font-weight:600;letter-spacing:-0.025em;color:var(--ink-1);line-height:1.1}
+  .h-display{font-size:48px}
+  .h-h2{font-size:30px}
+  .h-h3{font-size:22px}
+  .h-h4{font-size:18px}
+  .num{font-family:'JetBrains Mono',monospace;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-0.01em;color:var(--ink-1)}
+  .quote{font-family:'Newsreader',serif;font-weight:400;font-style:italic;color:var(--ink-2);letter-spacing:-0.01em;line-height:1.4}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-5)}
+  .label{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-5)}
+  .meta{font-size:12px;color:var(--ink-5)}
+  .em{color:var(--emerald-2)}
+  .up{color:#22C55E}
+  .dn{color:#EF4444}
+
+  /* ============ NAV ============ */
+  .nav{position:sticky;top:0;z-index:50;height:48px;background:rgba(15,20,25,0.85);backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid var(--line)}
+  .nav-inner{max-width:1240px;margin:0 auto;height:100%;padding:0 32px;display:flex;align-items:center;justify-content:space-between}
+  .wordmark{font-family:'Inter Tight';font-weight:600;font-size:16px;color:var(--ink-1);letter-spacing:-0.02em}
+  .wordmark .dot{display:inline-block;width:5px;height:5px;background:var(--emerald-2);border-radius:1px;margin-right:8px;vertical-align:1px}
+  .nav-links{display:flex;align-items:center;gap:28px;font-size:13px;color:var(--ink-4)}
+  .nav-links a{transition:color .15s ease}
+  .nav-links a:hover{color:var(--ink-1)}
+  .nav-cta{padding:6px 14px;border:1px solid var(--emerald);color:var(--emerald-2);border-radius:4px;font-size:12px;font-weight:500;letter-spacing:0.02em;transition:.15s}
+  .nav-cta:hover{background:var(--emerald);color:#fff}
+
+  /* ============ LAYOUT ============ */
+  .wrap{max-width:1240px;margin:0 auto;padding:0 32px}
+  section{padding:96px 0;border-bottom:1px solid var(--line)}
+  section:last-child{border-bottom:none}
+  .sec-head{display:flex;align-items:baseline;gap:24px;margin-bottom:64px}
+  .sec-head .eyebrow{flex:none}
+
+  /* ============ HERO ============ */
+  #hero{padding:64px 0 120px;min-height:80vh}
+  .hero-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:96px;align-items:start;margin-top:80px}
+  .hero-left .eyebrow{margin-bottom:40px;display:block}
+  .hero-headline{font-size:48px;line-height:1.04;letter-spacing:-0.03em;margin-bottom:32px;color:var(--ink-1)}
+  .hero-sub{font-size:18px;color:var(--ink-4);max-width:560px;line-height:1.55;margin-bottom:48px;font-weight:300}
+  .hero-quote{border-left:1px solid var(--emerald-2);padding:6px 0 6px 24px;margin:48px 0 56px;max-width:520px;font-size:22px}
+  .hero-cta{display:flex;align-items:center;gap:32px;margin-bottom:64px}
+  .btn-primary{background:var(--emerald);color:#fff;padding:11px 22px;border-radius:4px;font-size:13px;font-weight:500;letter-spacing:0.005em;transition:.15s;border:1px solid var(--emerald)}
+  .btn-primary:hover{background:#0d5c56;border-color:#0d5c56}
+  .btn-link{color:var(--ink-2);font-size:13px;font-weight:500;border-bottom:1px solid var(--line-2);padding-bottom:2px;transition:.15s}
+  .btn-link:hover{color:var(--ink-1);border-bottom-color:var(--ink-1)}
+
+  .listed{display:flex;align-items:center;gap:28px;padding-top:32px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-5);max-width:600px}
+  .listed .label{color:var(--ink-5);margin-right:8px}
+  .listed span{color:var(--ink-3);font-weight:500;letter-spacing:0.02em}
+
+  /* hero right column data */
+  .hero-stats{display:flex;flex-direction:column}
+  .stat{padding:32px 0;border-top:1px solid var(--line)}
+  .stat:last-child{border-bottom:1px solid var(--line)}
+  .stat-num{font-family:'Inter Tight',sans-serif;font-weight:600;font-size:30px;letter-spacing:-0.025em;color:var(--ink-1);font-variant-numeric:tabular-nums;line-height:1.1}
+  .stat-num small{font-family:'Inter Tight';font-size:18px;color:var(--ink-4);font-weight:500;margin-left:4px}
+  .stat-label{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+  .stat-label .label{color:var(--ink-4)}
+  .stat-label .arrow{font-family:'JetBrains Mono';font-size:11px;color:var(--emerald-2)}
+
+  /* ============ DASHBOARD ============ */
+  .top-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .top-card{padding:28px 32px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:14px;min-height:128px;justify-content:space-between}
+  .top-card:last-child{border-right:none}
+  .top-card .label{color:var(--ink-5)}
+  .top-card .v{font-family:'Inter Tight';font-weight:600;font-size:30px;color:var(--ink-1);letter-spacing:-0.025em;font-variant-numeric:tabular-nums;line-height:1}
+  .top-card .delta{font-family:'JetBrains Mono';font-size:13px;color:var(--ink-4);display:flex;align-items:center;gap:8px}
+  .top-card .delta .v-sm{color:var(--ink-2)}
+
+  .dash-body{display:grid;grid-template-columns:1fr;gap:64px;margin-top:64px}
+  .chart-block{padding:0}
+  .chart-meta{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:24px}
+  .chart-meta h3{font-family:'Inter Tight';font-weight:600;font-size:22px;color:var(--ink-1);letter-spacing:-0.02em}
+  .chart-meta .right{display:flex;gap:24px;font-family:'JetBrains Mono';font-size:11px;color:var(--ink-5);letter-spacing:0.1em;text-transform:uppercase}
+  .chart-meta .right a{padding:4px 0;border-bottom:1px solid transparent}
+  .chart-meta .right a.on{color:var(--ink-1);border-bottom-color:var(--emerald-2)}
+  #equity-chart{width:100%;height:320px}
+
+  .split{display:grid;grid-template-columns:1.5fr 1fr;gap:64px;margin-top:24px}
+
+  /* market widgets */
+  .markets{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-top:1px solid var(--line)}
+  .market{padding:24px 0;border-bottom:1px solid var(--line);padding-right:32px}
+  .market:nth-child(2n){padding-right:0;padding-left:32px;border-left:1px solid var(--line);margin-left:-1px}
+  .market .label{display:block;margin-bottom:14px;color:var(--ink-5)}
+  .market .row{display:flex;align-items:baseline;gap:14px}
+  .market .v{font-family:'JetBrains Mono';font-weight:500;font-size:22px;color:var(--ink-1);font-variant-numeric:tabular-nums;letter-spacing:-0.01em}
+  .market .d{font-family:'JetBrains Mono';font-size:12px;font-variant-numeric:tabular-nums}
+  .market .note{font-size:11px;color:var(--ink-5);margin-top:8px;letter-spacing:0.01em}
+
+  /* news */
+  .news h4{font-family:'Inter Tight';font-weight:600;font-size:13px;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .news-item{padding:18px 0;border-bottom:1px solid var(--line)}
+  .news-item:last-child{border-bottom:none}
+  .news-item .time{font-family:'JetBrains Mono';font-size:11px;color:var(--ink-5);letter-spacing:0.08em;margin-bottom:8px}
+  .news-item .title{font-family:'Inter Tight';font-weight:500;font-size:14px;color:var(--ink-1);line-height:1.4;margin-bottom:6px;letter-spacing:-0.01em}
+  .news-item .sum{font-size:13px;color:var(--ink-4);line-height:1.55;font-weight:300}
+  .news-item.live .time::before{content:"●  ";color:var(--emerald-2);font-size:8px;vertical-align:1px}
+
+  .dash-quote{margin-top:96px;border-left:1px solid var(--emerald-2);padding:6px 0 6px 24px;font-size:22px;max-width:680px}
+  .dash-quote cite{display:block;margin-top:14px;font-family:'Inter';font-style:normal;font-size:13px;color:var(--ink-5);letter-spacing:0.04em}
+
+  /* ============ TRADERS ============ */
+  .tabs{display:flex;align-items:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:64px}
+  .tab{padding:18px 24px;font-family:'Inter Tight';font-weight:500;font-size:13px;color:var(--ink-5);border-right:1px solid var(--line);position:relative;cursor:pointer;letter-spacing:-0.005em;transition:.15s}
+  .tab:last-child{border-right:none}
+  .tab:hover{color:var(--ink-2)}
+  .tab.on{color:var(--ink-1)}
+  .tab.on::after{content:"";position:absolute;left:24px;right:24px;bottom:-1px;height:1px;background:var(--emerald-2)}
+  .tab .n{font-family:'JetBrains Mono';font-size:11px;color:var(--ink-5);margin-left:8px;letter-spacing:0.05em}
+
+  .traders{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--line)}
+  .trader{padding:32px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:64px 1fr;gap:24px;padding-right:48px}
+  .trader:nth-child(2n){padding-right:0;padding-left:48px;border-left:1px solid var(--line);margin-left:-1px}
+  .avatar{width:56px;height:56px;border-radius:4px;overflow:hidden;background:var(--bg-2);border:1px solid var(--line)}
+  .avatar img{width:100%;height:100%;display:block}
+  .tr-row1{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+  .tr-name{font-family:'Inter Tight';font-weight:600;font-size:18px;color:var(--ink-1);letter-spacing:-0.02em}
+  .tr-days{font-family:'JetBrains Mono';font-size:11px;color:var(--ink-5);letter-spacing:0.05em}
+  .tr-row2{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .tr-tag{font-family:'JetBrains Mono';font-size:10.5px;color:var(--ink-4);letter-spacing:0.12em;text-transform:uppercase}
+  .tr-tag::before{content:"";display:inline-block;width:3px;height:3px;background:var(--ink-5);border-radius:50%;margin-right:8px;vertical-align:2px}
+  .tr-pnl{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:24px}
+  .tr-pnl .v{font-family:'JetBrains Mono';font-weight:500;font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:-0.01em}
+  .tr-pnl .spark{width:80px;height:18px;flex:none}
+  .tr-metrics{display:flex;flex-wrap:wrap;gap:0;font-family:'JetBrains Mono';font-size:11.5px;color:var(--ink-4);font-variant-numeric:tabular-nums;margin-bottom:18px;letter-spacing:0.01em}
+  .tr-metrics span{padding-right:14px;margin-right:14px;border-right:1px solid var(--line)}
+  .tr-metrics span:last-child{border-right:none;padding-right:0;margin-right:0}
+  .tr-metrics b{color:var(--ink-2);font-weight:500}
+  .tr-copy{font-family:'Inter Tight';font-weight:500;font-size:13px;color:var(--emerald-2);letter-spacing:-0.005em;border-bottom:1px solid var(--line-2);padding-bottom:2px;transition:.15s;display:inline-block}
+  .tr-copy:hover{border-bottom-color:var(--emerald-2)}
+
+  .traders-quote{margin-top:96px;border-left:1px solid var(--emerald-2);padding:6px 0 6px 24px;font-size:22px;max-width:720px}
+
+  /* ============ CONFIG MODAL ============ */
+  .modal-stage{padding:48px 32px;display:flex;align-items:flex-start;justify-content:center;min-height:780px}
+  .modal{width:100%;max-width:720px;border:1px solid var(--line-2);border-radius:4px;background:var(--bg);padding:48px;position:relative}
+  .modal-header{padding-bottom:32px;border-bottom:1px solid var(--line);margin-bottom:32px}
+  .modal-header .label{margin-bottom:16px;display:block}
+  .modal-header h3{font-family:'Inter Tight';font-weight:600;font-size:22px;color:var(--ink-1);letter-spacing:-0.02em;display:flex;align-items:baseline;gap:14px}
+  .modal-header h3 .id{font-family:'JetBrains Mono';font-size:13px;color:var(--ink-5);font-weight:400;letter-spacing:0.05em}
+  .modal-header .sub{margin-top:8px;font-size:13px;color:var(--ink-4)}
+
+  .group{padding:28px 0;border-bottom:1px solid var(--line)}
+  .group:last-of-type{border-bottom:none}
+  .group-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:24px}
+  .group-head .label{color:var(--ink-3);font-size:12px;letter-spacing:0.12em}
+  .group-head .hint{font-size:12px;color:var(--ink-5)}
+
+  .field{display:grid;grid-template-columns:160px 1fr;gap:24px;align-items:center;padding:14px 0;border-bottom:1px dashed transparent}
+  .field-label{font-size:13px;color:var(--ink-4);letter-spacing:-0.005em}
+  .field-ctrl{font-size:13px;color:var(--ink-1)}
+
+  .radio-row{display:flex;align-items:center;gap:0}
+  .radio-row button{font-family:'Inter Tight';font-size:13px;color:var(--ink-5);padding:6px 0;margin-right:28px;border-bottom:1px solid transparent;transition:.15s;letter-spacing:-0.005em}
+  .radio-row button:last-child{margin-right:0}
+  .radio-row button.on{color:var(--ink-1);border-bottom:1px solid var(--emerald-2)}
+  .radio-row button:hover:not(.on){color:var(--ink-3)}
+
+  .underline-input{display:inline-flex;align-items:baseline;gap:8px;border-bottom:1px solid var(--line-2);padding:6px 0;min-width:120px}
+  .underline-input input{background:transparent;border:none;outline:none;color:var(--ink-1);font-family:'JetBrains Mono';font-size:14px;width:80px;font-variant-numeric:tabular-nums}
+  .underline-input .unit{font-size:12px;color:var(--ink-5);font-family:'JetBrains Mono';letter-spacing:0.05em}
+  .underline-input.full{display:flex;width:100%}
+  .underline-input.full input{flex:1;width:auto}
+
+  .toggle{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-3);cursor:pointer}
+  .toggle .sw{width:28px;height:14px;border:1px solid var(--line-2);border-radius:8px;position:relative;background:transparent;transition:.15s}
+  .toggle .sw::after{content:"";position:absolute;top:1px;left:1px;width:10px;height:10px;background:var(--ink-5);border-radius:50%;transition:.15s}
+  .toggle.on .sw{border-color:var(--emerald);background:rgba(15,118,110,0.15)}
+  .toggle.on .sw::after{left:15px;background:var(--emerald-2)}
+
+  .check{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-3);margin-right:24px;cursor:pointer;padding:6px 0}
+  .check .box{width:13px;height:13px;border:1px solid var(--line-2);border-radius:2px;display:inline-flex;align-items:center;justify-content:center}
+  .check.on .box{background:var(--emerald);border-color:var(--emerald)}
+  .check.on .box::after{content:"";width:5px;height:8px;border:1.5px solid #fff;border-top:0;border-left:0;transform:rotate(45deg) translate(-1px,-1px)}
+  .check.on{color:var(--ink-1)}
+
+  .modal-footer{display:flex;align-items:center;justify-content:space-between;padding-top:32px;margin-top:32px;border-top:1px solid var(--line);gap:32px}
+  .modal-foot-note{flex:1;font-family:'Newsreader';font-style:italic;font-size:15px;color:var(--ink-4);line-height:1.5;max-width:380px}
+  .modal-actions{display:flex;align-items:center;gap:24px;flex:none}
+  .modal-actions .cancel{font-size:13px;color:var(--ink-4);transition:.15s}
+  .modal-actions .cancel:hover{color:var(--ink-1)}
+
+  /* spark color helpers */
+  .spark-up path:last-of-type{stroke:#22C55E}
+  .spark-dn path:last-of-type{stroke:#EF4444}
+
+  /* footer */
+  .foot{padding:48px 0;border-top:1px solid var(--line);font-size:12px;color:var(--ink-5);display:flex;justify-content:space-between;align-items:center}
+  .foot .right{display:flex;gap:24px}
+
+  /* anchor offset */
+  section{scroll-margin-top:60px}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#hero" class="wordmark"><span class="dot"></span>Copy Trader</a>
+    <div class="nav-links">
+      <a href="#hero">Product</a>
+      <a href="#traders">Traders</a>
+      <a href="#dashboard">Pricing</a>
+      <a href="#dashboard">Docs</a>
+      <a href="#hero">Sign in</a>
+      <a href="#config" class="nav-cta">Start trial</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section id="hero">
+  <div class="wrap">
+    <div class="eyebrow">01 &mdash; Platform</div>
+
+    <div class="hero-grid">
+      <div class="hero-left">
+        <h1 class="hero-headline h-title">Copy the alpha<br/>you couldn&rsquo;t see.</h1>
+        <p class="hero-sub">A signal infrastructure for hidden lead traders, on-chain whales, and Hyperliquid markets. Built for traders who execute, not advertise.</p>
+
+        <blockquote class="hero-quote quote">
+          &ldquo;We don&rsquo;t share your profits. You keep 100% of the alpha.&rdquo;
+        </blockquote>
+
+        <div class="hero-cta">
+          <a href="#config" class="btn-primary">Start free trial &nbsp;&rarr;</a>
+          <a href="#dashboard" class="btn-link">Read documentation &nbsp;&#8599;</a>
+        </div>
+
+        <div class="listed">
+          <span class="label">Listed on</span>
+          <span>Binance</span>
+          <span>OKX</span>
+          <span>Bitget</span>
+          <span>Bybit</span>
+          <span>Hyperliquid</span>
+        </div>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-num">15,847</div>
+          <div class="stat-label"><span class="label">Active followers</span><span class="arrow">&uarr; 12.4%</span></div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">&lt;<span style="color:var(--emerald-2);margin:0 2px">2</span>ms<small>median</small></div>
+          <div class="stat-label"><span class="label">Execution latency</span><span class="arrow">Hyperliquid p50</span></div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">$284M</div>
+          <div class="stat-label"><span class="label">30-day copied volume</span><span class="arrow">&uarr; 8.1%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DASHBOARD ============ -->
+<section id="dashboard">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">02 &mdash; Dashboard</div>
+      <div class="meta" style="color:var(--ink-5)">Account 52494073 &nbsp;&middot;&nbsp; 220d 13h remaining</div>
+    </div>
+
+    <div class="top-cards">
+      <div class="top-card">
+        <div class="label">Total equity</div>
+        <div class="v">$32,771.<span style="color:var(--ink-4)">35</span></div>
+        <div class="delta"><span class="v-sm">USDT</span><span>&middot; 4 sub-accounts</span></div>
+      </div>
+      <div class="top-card">
+        <div class="label">Cumulative PnL</div>
+        <div class="v" style="color:#22C55E">+$269,066.<span style="opacity:.7">53</span></div>
+        <div class="delta"><span class="v-sm" style="color:#22C55E">+821.0%</span><span>&middot; since inception</span></div>
+      </div>
+      <div class="top-card">
+        <div class="label">Today&rsquo;s PnL</div>
+        <div class="v">$0.<span style="color:var(--ink-4)">00</span></div>
+        <div class="delta"><span class="v-sm">flat</span><span>&middot; 0 trades</span></div>
+      </div>
+      <div class="top-card">
+        <div class="label">Accounts linked</div>
+        <div class="v">04</div>
+        <div class="delta"><span class="v-sm">Gate $30,518.43</span><span>+ 3</span></div>
+      </div>
+    </div>
+
+    <div class="dash-body">
+
+      <div class="chart-block">
+        <div class="chart-meta">
+          <h3>Net equity curve</h3>
+          <div class="right">
+            <a>7D</a><a>30D</a><a class="on">60D</a><a>YTD</a><a>ALL</a>
+          </div>
+        </div>
+        <div id="equity-chart"></div>
+      </div>
+
+      <div class="split">
+        <div>
+          <h4 class="label" style="display:block;margin-bottom:24px;color:var(--ink-3)">Market context</h4>
+          <div class="markets">
+            <div class="market">
+              <span class="label">BTC / USDT</span>
+              <div class="row"><span class="v">74,180</span><span class="d dn">&minus;1.97%</span></div>
+              <div class="note">24h range 73,210 &mdash; 75,840</div>
+            </div>
+            <div class="market">
+              <span class="label">Fear &amp; Greed</span>
+              <div class="row"><span class="v">22</span><span class="d" style="color:var(--ink-4)">Extreme Fear</span></div>
+              <div class="note">prev 28 &middot; 7d avg 26</div>
+            </div>
+            <div class="market">
+              <span class="label">24h Liquidations</span>
+              <div class="row"><span class="v">$289M</span><span class="d dn">long-heavy</span></div>
+              <div class="note">1h $3.65M &middot; longs 71%</div>
+            </div>
+            <div class="market">
+              <span class="label">BTC Funding</span>
+              <div class="row"><span class="v">+0.010%</span><span class="d em">normal</span></div>
+              <div class="note">8h rate &middot; binance perp</div>
+            </div>
+            <div class="market">
+              <span class="label">Long / Short ratio</span>
+              <div class="row"><span class="v">1.69</span><span class="d" style="color:var(--ink-4)">long-skew</span></div>
+              <div class="note">binance traders &middot; 58 / 42</div>
+            </div>
+            <div class="market">
+              <span class="label">USDT premium</span>
+              <div class="row"><span class="v">&yen;6.78</span><span class="d" style="color:#22C55E">+0.01%</span></div>
+              <div class="note">slight inflow to exchanges</div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="news">
+          <h4>Wire &mdash; live</h4>
+          <div class="news-item live">
+            <div class="time">14:38:02 UTC</div>
+            <div class="title">Hyperliquid open interest crosses $4.2B for the first time</div>
+            <div class="sum">HYPE perp leads with 38% of total volume as cross-margin balances migrate from CEX venues.</div>
+          </div>
+          <div class="news-item live">
+            <div class="time">14:24:11 UTC</div>
+            <div class="title">BTC perp funding flips slightly positive across top three venues</div>
+            <div class="sum">Binance +0.010%, OKX +0.008%, Bybit +0.012%. Spot premium narrows to 14bps.</div>
+          </div>
+          <div class="news-item">
+            <div class="time">13:51:46 UTC</div>
+            <div class="title">A whale closes 1,240 BTC long, realises $4.1M profit on 5&times; lev</div>
+            <div class="sum">Trader 0x8c2a&hellip; held position 38 hours. Net P/L 9.2% net of fees.</div>
+          </div>
+          <div class="news-item">
+            <div class="time">13:20:09 UTC</div>
+            <div class="title">USDT supply on CEX increases 0.04%, modest inflow</div>
+            <div class="sum">Tether net mints $80M, of which $60M routes to Binance hot wallets.</div>
+          </div>
+          <div class="news-item">
+            <div class="time">12:48:33 UTC</div>
+            <div class="title">CME basis tightens: front-month rolls trade at 4.1% annualised</div>
+            <div class="sum">June contract premium compresses from 5.6% on Tuesday close.</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <blockquote class="dash-quote quote">
+      &ldquo;Risk is what&rsquo;s left over after you think you&rsquo;ve thought of everything.&rdquo;
+      <cite>&mdash; Carl Richards</cite>
+    </blockquote>
+  </div>
+</section>
+
+<!-- ============ TRADERS ============ -->
+<section id="traders">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">03 &mdash; Traders</div>
+      <div class="meta">Curated lead traders &middot; updated every 90 seconds</div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab on">All<span class="n">847</span></div>
+      <div class="tab">Binance<span class="n">412</span></div>
+      <div class="tab">Smart $<span class="n">156</span></div>
+      <div class="tab">OKX<span class="n">204</span></div>
+      <div class="tab">Bitget<span class="n">38</span></div>
+      <div class="tab">BiCoin<span class="n">22</span></div>
+      <div class="tab">Hyperbot<span class="n">15</span></div>
+    </div>
+
+    <div class="traders" id="traders-grid">
+      <!-- generated by JS -->
+    </div>
+
+    <blockquote class="traders-quote quote">
+      &ldquo;In trading, the best traders don&rsquo;t share their secrets &mdash; they share their signals.&rdquo;
+    </blockquote>
+  </div>
+</section>
+
+<!-- ============ CONFIG MODAL ============ -->
+<section id="config">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">04 &mdash; Configure</div>
+      <div class="meta">Copy task specification</div>
+    </div>
+
+    <div class="modal-stage">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="label">Configure task</span>
+          <h3>&#x6306;&#x6306;&#x5927;&#x9b54;&#x738b; <span class="id">/ OKX 79346</span></h3>
+          <div class="sub">Lead trader since 2020 &middot; 2,209 days on platform &middot; 7,618 USDT average size</div>
+        </div>
+
+        <!-- 1 Capital -->
+        <div class="group">
+          <div class="group-head">
+            <span class="label">Capital allocation</span>
+            <span class="hint">required &middot; 1 of 3 modes</span>
+          </div>
+          <div class="field">
+            <div class="field-label">Allocation mode</div>
+            <div class="field-ctrl">
+              <div class="radio-row">
+                <button class="on">Fixed amount</button>
+                <button>Full position</button>
+                <button>Compounding</button>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Copy multiplier</div>
+            <div class="field-ctrl">
+              <span class="underline-input"><input value="1.00" /><span class="unit">&times;</span></span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Fixed margin</div>
+            <div class="field-ctrl">
+              <span class="underline-input"><input value="500.00" /><span class="unit">USDT</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Execution -->
+        <div class="group">
+          <div class="group-head">
+            <span class="label">Execution triggers</span>
+            <span class="hint">when to enter and add to positions</span>
+          </div>
+          <div class="field">
+            <div class="field-label">Initial copy</div>
+            <div class="field-ctrl">
+              <div class="radio-row">
+                <button>Do not copy</button>
+                <button class="on">Losing positions only</button>
+                <button>All positions</button>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Position direction</div>
+            <div class="field-ctrl">
+              <div class="radio-row">
+                <button class="on">Any direction</button>
+                <button>Long only</button>
+                <button>Short only</button>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Open trigger</div>
+            <div class="field-ctrl">
+              <div class="radio-row">
+                <button>Market</button>
+                <button class="on">Limit at avg</button>
+                <button>Limit at last add</button>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Price edge</div>
+            <div class="field-ctrl">
+              <span class="underline-input"><input value="0.15" /><span class="unit">% better than lead</span></span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Add trigger</div>
+            <div class="field-ctrl">
+              <div class="radio-row">
+                <button>Market</button>
+                <button>Limit at avg</button>
+                <button class="on">Limit at last add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 Risk -->
+        <div class="group">
+          <div class="group-head">
+            <span class="label">Risk controls</span>
+            <span class="hint">your last line of defence</span>
+          </div>
+          <div class="field">
+            <div class="field-label">Take profit</div>
+            <div class="field-ctrl">
+              <div class="radio-row">
+                <button>Disabled</button>
+                <button class="on">Recurring</button>
+              </div>
+              <span class="underline-input" style="margin-left:24px"><input value="50" /><span class="unit">% close</span></span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Stop loss</div>
+            <div class="field-ctrl">
+              <div class="radio-row">
+                <button>Disabled</button>
+                <button class="on">Recurring</button>
+              </div>
+              <span class="underline-input" style="margin-left:24px"><input value="100" /><span class="unit">% close</span></span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Drawdown stop</div>
+            <div class="field-ctrl">
+              <span class="underline-input"><input value="2000" /><span class="unit">USDT loss cap</span></span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Safety buffer</div>
+            <div class="field-ctrl">
+              <span class="underline-input"><input value="1.5" /><span class="unit">&times; lead loss</span></span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Refill on retrace</div>
+            <div class="field-ctrl">
+              <span class="toggle on"><span class="sw"></span>Reopen position when price returns to entry avg</span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Allow re-TP</div>
+            <div class="field-ctrl">
+              <span class="toggle on"><span class="sw"></span>Allow another take-profit after refill</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Symbol filters -->
+        <div class="group">
+          <div class="group-head">
+            <span class="label">Symbol filters</span>
+            <span class="hint">comma separated tickers</span>
+          </div>
+          <div class="field">
+            <div class="field-label">Blacklist</div>
+            <div class="field-ctrl">
+              <span class="underline-input full"><input value="MEME, PEPE, DOGE" /></span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Whitelist</div>
+            <div class="field-ctrl">
+              <span class="underline-input full"><input value="BTC, ETH, SOL, HYPE, BNB" /></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5 Notifications -->
+        <div class="group">
+          <div class="group-head">
+            <span class="label">Notifications</span>
+            <span class="hint">delivery + events</span>
+          </div>
+          <div class="field">
+            <div class="field-label">Delivery</div>
+            <div class="field-ctrl">
+              <div class="radio-row">
+                <button>None</button>
+                <button>Email</button>
+                <button class="on">Telegram bot</button>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Events</div>
+            <div class="field-ctrl">
+              <span class="check on"><span class="box"></span>Order filled</span>
+              <span class="check on"><span class="box"></span>Order failed</span>
+              <span class="check on"><span class="box"></span>Risk triggered</span>
+              <span class="check"><span class="box"></span>TP / SL hit</span>
+              <span class="check on"><span class="box"></span>Margin change</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <p class="modal-foot-note">This configuration applies to all copy tasks under this trader.</p>
+          <div class="modal-actions">
+            <a class="cancel">Cancel</a>
+            <a class="btn-primary">Start copy &nbsp;&rarr;</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap" style="display:flex;justify-content:space-between;align-items:center">
+    <div>Copy Trader &copy; 2026 &mdash; for traders who execute, not advertise.</div>
+    <div class="right">
+      <a>Terms</a><a>Privacy</a><a>API</a><a>Status</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---------- Equity curve ---------- */
+(function(){
+  const el = document.getElementById('equity-chart');
+  if(!el) return;
+  const chart = echarts.init(el, null, {renderer:'canvas'});
+  // generate 60 deterministic points around base trajectory
+  const N=60; const data=[]; let v=260000; const seed=42;
+  function r(i){let x=Math.sin(i*seed)*10000;return x-Math.floor(x);}
+  for(let i=0;i<N;i++){
+    const drift = (i/N)*9000;
+    const noise = (r(i)-0.5)*4200;
+    const swing = Math.sin(i/6)*1800;
+    v = 260000 + drift + noise + swing;
+    data.push([i, Math.round(v)]);
+  }
+  // make sure last point lands near 269066
+  data[N-1][1]=269066;
+  const dates=[];
+  for(let i=0;i<N;i++){
+    const d=new Date(2026,2,29+i);
+    dates.push((d.getMonth()+1)+'/'+d.getDate());
+  }
+  chart.setOption({
+    backgroundColor:'transparent',
+    grid:{left:48,right:24,top:16,bottom:32},
+    tooltip:{
+      trigger:'axis',
+      backgroundColor:'#0F1419',
+      borderColor:'rgba(255,255,255,0.10)',
+      borderWidth:1,
+      textStyle:{color:'#F7F7F4',fontFamily:'JetBrains Mono',fontSize:11},
+      formatter:p=>`<div style="font-family:JetBrains Mono;letter-spacing:.08em;font-size:10px;color:#6B7280;text-transform:uppercase">${dates[p[0].dataIndex]}</div><div style="font-family:Inter Tight;font-weight:600;color:#F7F7F4;font-size:14px;margin-top:4px">$${p[0].value[1].toLocaleString()}</div>`
+    },
+    xAxis:{
+      type:'category',
+      data:dates,
+      axisLine:{lineStyle:{color:'rgba(255,255,255,0.10)'}},
+      axisTick:{show:false},
+      axisLabel:{color:'#6B7280',fontFamily:'JetBrains Mono',fontSize:10,letterSpacing:0.05,interval:9,formatter:v=>v}
+    },
+    yAxis:{
+      type:'value',
+      min:240000,max:280000,
+      splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}},
+      axisLine:{show:false},axisTick:{show:false},
+      axisLabel:{color:'#6B7280',fontFamily:'JetBrains Mono',fontSize:10,formatter:v=>'$'+(v/1000).toFixed(0)+'k'}
+    },
+    series:[{
+      type:'line',
+      data:data,
+      showSymbol:false,
+      smooth:0.18,
+      lineStyle:{color:'#14B8A6',width:1.4},
+      areaStyle:{
+        color:{
+          type:'linear',x:0,y:0,x2:0,y2:1,
+          colorStops:[
+            {offset:0,color:'rgba(15,118,110,0.18)'},
+            {offset:1,color:'rgba(15,118,110,0.0)'}
+          ]
+        }
+      }
+    }]
+  });
+  window.addEventListener('resize',()=>chart.resize());
+})();
+
+/* ---------- Traders data ---------- */
+const TRADERS = [
+  {name:"茂茂大魔王", id:"79346", exch:"OKX", src:"BiCoin", pnl:"+1,343,829.94", pnlClass:"up", roi:"14,539.61%", size:"7,618 USDT", sharpe:"—", win:"34.4%", dd:"2.57%", days:"2,209d", spark:[3,4,4,5,6,7,9,11,14,18,23,29,36,45,55,68,82,98]},
+  {name:"风火山林Trader", id:"369319", exch:"Binance", src:"BiCoin", pnl:"+1,927,532.79", pnlClass:"up", roi:"6,880.06%", size:"89,999 USDT", sharpe:"—", win:"45.4%", dd:"6.86%", days:"1,705d", spark:[8,10,12,14,17,20,24,29,35,42,50,59,70,82,95,98,96,99]},
+  {name:"牛的青山在", id:"1030294", exch:"OKX", src:"BiCoin", pnl:"+297,089.72", pnlClass:"up", roi:"10,326.49%", size:"13,292 USDT", sharpe:"—", win:"75.0%", dd:"1.15%", days:"899d", spark:[2,3,4,5,7,10,14,19,25,32,40,49,59,70,80,88,93,98]},
+  {name:"寒星日照", id:"951891", exch:"OKX", src:"BiCoin", pnl:"+408,565.96", pnlClass:"up", roi:"343.37%", size:"138,001 USDT", sharpe:"—", win:"43.3%", dd:"14.51%", days:"1,218d", spark:[20,28,22,32,40,38,48,42,55,50,62,58,70,65,78,72,85,80]},
+  {name:"MaximizeSR", id:"…44364033", exch:"Binance", src:"Hidden", pnl:"−319.96", pnlClass:"dn", roi:"−6.03%", size:"46,358 USDT", sharpe:"0.06", win:"51.3%", dd:"9.15%", days:"653d", spark:[50,48,52,49,53,50,55,52,54,50,49,52,48,51,49,52,50,48]},
+  {name:"KNOTMAIN", id:"…99733504", exch:"Binance", src:"Hidden", pnl:"+365,404.77", pnlClass:"up", roi:"53.51%", size:"NaN", sharpe:"3.20", win:"57.8%", dd:"13.32%", days:"—", spark:[30,35,32,40,38,45,42,52,48,58,55,65,62,72,68,78,75,82]},
+  {name:"穩定暴擊 Crit", id:"…44867073", exch:"Binance", src:"Hidden", pnl:"−102,513.70", pnlClass:"dn", roi:"−57.91%", size:"69,091 USDT", sharpe:"−0.05", win:"32.8%", dd:"69.91%", days:"715d", spark:[88,82,78,72,68,60,55,48,42,35,28,32,25,22,18,14,12,10]},
+  {name:"Melanya", id:"…59556225", exch:"Binance", src:"Hidden", pnl:"0.00", pnlClass:"", roi:"0.00%", size:"10,177 USDT", sharpe:"−0.13", win:"0.00%", dd:"0.00%", days:"802d", spark:[50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50]}
+];
+
+function avatarUrl(name){
+  const seed = encodeURIComponent(name);
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0F766E&textColor=F7F7F4&fontWeight=600&fontSize=42`;
+}
+
+function renderSpark(arr, cls){
+  const W=80, H=18, P=1;
+  const min=Math.min(...arr), max=Math.max(...arr);
+  const rng=(max-min)||1;
+  const step=(W-P*2)/(arr.length-1);
+  const points=arr.map((y,i)=>{
+    const x=P+i*step;
+    const yy=H-P-((y-min)/rng)*(H-P*2);
+    return [x,yy];
+  });
+  const d=points.map((p,i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' ');
+  const color = cls==='up' ? '#22C55E' : (cls==='dn' ? '#EF4444' : '#6B7280');
+  return `<svg class="spark spark-${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+function renderTraders(){
+  const root = document.getElementById('traders-grid');
+  root.innerHTML = TRADERS.map(t=>`
+    <article class="trader">
+      <div class="avatar"><img src="${avatarUrl(t.name)}" alt=""/></div>
+      <div>
+        <div class="tr-row1">
+          <div class="tr-name">${t.name}</div>
+          <div class="tr-days">${t.days}</div>
+        </div>
+        <div class="tr-row2">
+          <span class="tr-tag">${t.exch}</span>
+          <span class="tr-tag">${t.src}</span>
+          <span class="tr-tag">ID ${t.id}</span>
+        </div>
+        <div class="tr-pnl">
+          <span class="v ${t.pnlClass}">${t.pnl}</span>
+          ${renderSpark(t.spark, t.pnlClass)}
+        </div>
+        <div class="tr-metrics">
+          <span>Return <b>${t.roi}</b></span>
+          <span>Size <b>${t.size}</b></span>
+          <span>Sharpe <b>${t.sharpe}</b></span>
+          <span>Win <b>${t.win}</b></span>
+          <span>DD <b>${t.dd}</b></span>
+        </div>
+        <a class="tr-copy" href="#config">Copy &nbsp;&rarr;</a>
+      </div>
+    </article>
+  `).join('');
+}
+renderTraders();
+
+/* tabs interaction (visual only) */
+document.querySelectorAll('.tabs .tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('on'));
+    tab.classList.add('on');
+  });
+});
+document.querySelectorAll('.radio-row').forEach(row=>{
+  row.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      row.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+    });
+  });
+});
+document.querySelectorAll('.toggle').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));
+document.querySelectorAll('.check').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+</script>
+</body>
+</html>

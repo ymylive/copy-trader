@@ -9,6 +9,7 @@ from app.api.v1 import (
     copy_configs,
     dashboard,
     invite,
+    realtime,
     shop,
     system,
     traders,
@@ -25,3 +26,4 @@ api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(invite.router, prefix="/invite", tags=["invite"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(realtime.router, tags=["realtime"])  # /ws/* + /internal/notify

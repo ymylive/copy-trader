@@ -1,7 +1,7 @@
 """Dashboard aggregation endpoints."""
 from __future__ import annotations
 
-import time
+import logging
 from datetime import datetime, timedelta
 from typing import List
 
@@ -22,15 +22,11 @@ from app.schemas.dashboard import (
     MarketOverviewOut,
     NewsItem,
 )
+from app.services.market_feed import fetch_market_overview, fetch_news
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-# Very small in-process TTL cache for the public endpoints.
-_news_cache: dict[str, tuple[float, List[NewsItem]]] = {}
-_market_cache: dict[str, tuple[float, MarketOverviewOut]] = {}
-_NEWS_TTL_S = 60
-_MARKET_TTL_S = 30
 
 
 @router.get("/summary", response_model=DashboardSummaryOut)
@@ -121,57 +117,33 @@ async def summary(
 
 @router.get("/news", response_model=List[NewsItem])
 async def news(_user: User = Depends(get_current_user)) -> List[NewsItem]:
-    """Cached crypto news feed (60s TTL). Stubbed for M0."""
-    key = "default"
-    ts, cached = _news_cache.get(key, (0.0, []))
-    if cached and time.time() - ts < _NEWS_TTL_S:
-        return cached
+    """Live crypto news feed (CryptoPanic, 60s TTL + last-good fallback)."""
+    raw = await fetch_news(limit=10)
+    items: List[NewsItem] = []
     now = datetime.utcnow()
-    items = [
-        NewsItem(
-            id="n1",
-            title="BTC 突破 70k 心理关口，市场资金费率走高",
-            url=None,
-            source="CoinTelegraph",
-            published_at=now - timedelta(minutes=15),
-            tags=["BTC", "spot"],
-        ),
-        NewsItem(
-            id="n2",
-            title="Hyperliquid 新增多个高 PnL Vault，链上跟单热度回暖",
-            url=None,
-            source="The Block",
-            published_at=now - timedelta(hours=1),
-            tags=["Hyperliquid", "Vault"],
-        ),
-        NewsItem(
-            id="n3",
-            title="OKX 公开带单页面 API 重构，前 20 名带单员胜率刷新",
-            url=None,
-            source="OKX Blog",
-            published_at=now - timedelta(hours=3),
-            tags=["OKX", "Copy"],
-        ),
-    ]
-    _news_cache[key] = (time.time(), items)
+    for i, r in enumerate(raw):
+        try:
+            pub = r.get("published_at")
+            if isinstance(pub, str):
+                # CryptoPanic returns ISO-8601; tolerate Z suffix
+                pub = datetime.fromisoformat(pub.replace("Z", "+00:00"))
+            elif not isinstance(pub, datetime):
+                pub = now - timedelta(minutes=15 * (i + 1))
+        except Exception:  # noqa: BLE001
+            pub = now - timedelta(minutes=15 * (i + 1))
+        items.append(NewsItem(
+            id=r.get("id") or f"n{i}",
+            title=r.get("title") or "",
+            url=r.get("url"),
+            source=r.get("source"),
+            published_at=pub,
+            tags=r.get("tags") or [],
+        ))
     return items
 
 
 @router.get("/market", response_model=MarketOverviewOut)
 async def market(_user: User = Depends(get_current_user)) -> MarketOverviewOut:
-    key = "default"
-    ts, cached = _market_cache.get(key, (0.0, None))  # type: ignore[arg-type]
-    if cached is not None and time.time() - ts < _MARKET_TTL_S:
-        return cached
-    snap = MarketOverviewOut(
-        btc_price_usdt=68250.31,
-        btc_change_24h=1.42,
-        fear_greed_index=62,
-        liquidations_24h_usdt=128_400_000.0,
-        open_interest_usdt=24_650_000_000.0,
-        funding_rate_btc=0.00012,
-        long_short_ratio=1.08,
-        updated_at=datetime.utcnow(),
-    )
-    _market_cache[key] = (time.time(), snap)
-    return snap
+    """Live market overview (CoinGecko + alternative.me + Binance Futures)."""
+    snap = await fetch_market_overview()
+    return MarketOverviewOut(**snap)
