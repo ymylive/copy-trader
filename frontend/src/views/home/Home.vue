@@ -1,253 +1,574 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, nextTick, computed, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
+import { BLOOMBERG_THEME } from '@/charts/echartsTheme'
+import LiveLog from '@/components/LiveLog.vue'
+import EditorialQuote from '@/components/EditorialQuote.vue'
+import { dashboardApi } from '@/api/dashboard'
+import { formatUTC } from '@/utils/format'
 
 const chartEl = ref<HTMLDivElement>()
+let chart: echarts.ECharts | null = null
+const execFeed = ref<any[]>([])
+const renderTs = ref(formatUTC())
+const utcLive = ref(formatUTC())
 
-onMounted(() => {
+let clockTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(async () => {
+  execFeed.value = (await dashboardApi.execFeed()) as any[]
+  await nextTick()
+  drawCandles()
+  clockTimer = setInterval(() => { utcLive.value = formatUTC() }, 1000)
+})
+onBeforeUnmount(() => { if (clockTimer) clearInterval(clockTimer) })
+
+function pad(n: number) { return n < 10 ? '0' + n : String(n) }
+function genCandles(n: number, start: number) {
+  let p = start
+  const out: number[][] = []
+  for (let i = 0; i < n; i++) {
+    const o = p
+    const ch = (Math.sin(i * 0.37 + 1) - 0.1) * 180
+    const c = o + ch
+    const h = Math.max(o, c) + Math.abs(Math.cos(i)) * 60
+    const l = Math.min(o, c) - Math.abs(Math.sin(i)) * 60
+    out.push([+o.toFixed(2), +c.toFixed(2), +l.toFixed(2), +h.toFixed(2)])
+    p = c
+  }
+  return out
+}
+function genTimes(n: number) {
+  const base = new Date('2026-05-28T10:00:00Z').getTime()
+  const out: string[] = []
+  for (let i = 0; i < n; i++) {
+    const d = new Date(base + i * 60000)
+    out.push(pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()))
+  }
+  return out
+}
+
+function drawCandles() {
   if (!chartEl.value) return
-  const chart = echarts.init(chartEl.value)
-  const data = Array.from({ length: 60 }, (_, i) =>
-    [`${i + 1}`, 1000 + i * 80 + Math.sin(i / 3) * 240 + Math.random() * 80]
-  )
+  chart = echarts.init(chartEl.value, BLOOMBERG_THEME, { renderer: 'canvas' })
+  const candles = genCandles(60, 74000)
   chart.setOption({
-    grid: { left: 40, right: 16, top: 20, bottom: 30 },
+    backgroundColor: 'transparent',
+    grid: { left: 42, right: 48, top: 14, bottom: 24 },
     xAxis: {
       type: 'category',
-      data: data.map((d) => d[0]),
-      axisLabel: { color: '#6B7280' },
-      axisLine: { lineStyle: { color: '#1F2937' } }
+      data: genTimes(60),
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#6B7280', fontSize: 9, interval: 9 }
     },
     yAxis: {
-      type: 'value',
-      axisLabel: { color: '#6B7280' },
-      splitLine: { lineStyle: { color: '#1F2937' } }
+      scale: true,
+      position: 'right',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#6B7280', fontSize: 9, formatter: (v: number) => v.toFixed(0) },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
     },
-    tooltip: { trigger: 'axis' },
-    series: [
-      {
-        type: 'line',
-        smooth: true,
-        data: data.map((d) => d[1]),
-        symbol: 'none',
-        lineStyle: { width: 2, color: '#10B981' },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(16,185,129,0.35)' },
-            { offset: 1, color: 'rgba(16,185,129,0.01)' }
-          ])
-        }
-      }
-    ]
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0A0E14',
+      borderColor: '#FFB400',
+      borderWidth: 1,
+      textStyle: { color: '#E6E8EA', fontFamily: 'JetBrains Mono', fontSize: 11 }
+    },
+    series: [{
+      type: 'candlestick',
+      data: candles,
+      itemStyle: {
+        color: '#22C55E', color0: '#EF4444',
+        borderColor: '#22C55E', borderColor0: '#EF4444',
+        borderWidth: 1
+      },
+      barWidth: '62%'
+    }]
   })
-  window.addEventListener('resize', () => chart.resize())
-})
+  window.addEventListener('resize', () => chart?.resize())
+}
+
+const tierData = [
+  { name: 'STARTER',  price: 80,  period: '/MO', features: ['1 ACCOUNT', '2 COPY SLOTS', 'STANDARD QUEUE', 'EMAIL ALERTS', 'COMMUNITY DOCS'] },
+  { name: 'PRO',      price: 240, period: '/MO', features: ['4 ACCOUNTS', '6 COPY SLOTS', 'PRIORITY QUEUE (<2MS)', 'TELEGRAM ALERTS', 'BICOIN COOKIE'] },
+  { name: 'ENTERPRISE', price: '—', period: 'CONTACT', features: ['UNLIMITED ACCOUNTS', 'UNLIMITED COPIES', 'BINANCE FAST EXEC 0.03S', 'DEDICATED SLA', 'CUSTOM REGION VPC'] }
+]
 </script>
 
 <template>
-  <section class="hero">
-    <h1>
-      Welcome to <span class="grad">Copy Trader</span>,<br />
-      where precision meets performance
-    </h1>
-    <p class="lead">
-      跨交易所 · 跨数据源 · 智能合约跟单系统 —— 用工程师的方法解决跟单延迟、风控与归因问题
-    </p>
-    <div class="cta-row">
-      <router-link to="/console" class="cta primary">立即体验</router-link>
-      <router-link to="/tutorial" class="cta ghost">使用教程</router-link>
-    </div>
+  <div class="home">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="sec-head">
+        <div class="sec-title"><span class="amber">01 //</span> PUBLIC LANDING · MAIN ENTRY</div>
+        <div class="sec-coord">REF 0x4A.HERO · {{ renderTs }}</div>
+      </div>
 
-    <div class="orbits" aria-hidden="true">
-      <div class="planet center">CT</div>
-      <div class="planet p1">BTC</div>
-      <div class="planet p2">ETH</div>
-      <div class="planet p3">SOL</div>
-      <div class="planet p4">HYPE</div>
-      <div class="ring r1"></div>
-      <div class="ring r2"></div>
-      <div class="ring r3"></div>
-    </div>
-  </section>
+      <div class="hero-grid">
+        <!-- LEFT -->
+        <div class="hero-left">
+          <div class="hero-meta">
+            <span class="amber">●</span>
+            <span>SYS / COPY-TRADING-ENGINE</span>
+            <span class="sep">|</span>
+            <span>BUILD 8941</span>
+            <span class="sep">|</span>
+            <span>PRESS [TAB] TO NAVIGATE</span>
+          </div>
 
-  <section class="features">
-    <h2 class="section-title">智能跟单系统 · 四大卖点</h2>
-    <div class="feature-grid">
-      <div class="feature-card">
-        <div class="feature-num">01</div>
-        <h3>极致低延迟</h3>
-        <p>毫秒级响应速度，即使交易员执行 100 单，我们仍能在 2 秒内完成所有跟单操作，体验极速交易。</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-num">02</div>
-        <h3>跨交易所无缝跟单</h3>
-        <p>无论是币安还是欧易，均可无缝跟踪顶尖交易员；跨平台操作，让每一笔机会都尽在掌握。</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-num">03</div>
-        <h3>全方位跟踪支持</h3>
-        <p>满员状态、私域带单、隐藏仓位及非带单员，无论市场如何变化，您都能随时跟踪确保每一笔交易的精准执行。</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-num">04</div>
-        <h3>科学仓位管理</h3>
-        <p>合理分配仓位、优化风险与回报；系统智能调整每一笔交易的仓位，确保资金利用效率最大化。</p>
-      </div>
-    </div>
-  </section>
+          <h1 class="hero-h1">
+            cross-exchange copy trading.<br/>
+            with <span class="em">terminal-grade</span> execution.<span class="cursor">▌</span>
+          </h1>
 
-  <section class="chart-section">
-    <div class="chart-wrap">
-      <div class="chart-meta">
-        <h2 class="section-title">资金效益最大化 · 收益示例</h2>
-        <p class="muted">示意数据，仅作 UI 展示，不代表实际收益。</p>
-      </div>
-      <div ref="chartEl" class="chart"></div>
-    </div>
-  </section>
+          <p class="hero-sub">
+            latency under 2 ms <span class="sep">·</span> 5 venues <span class="sep">·</span> 6 signal sources <span class="sep">·</span> zero profit share<br/>
+            engineered for the high-frequency tail of crypto derivatives. okx, binance, bitget, gate, hyperliquid — one console, one execution path.
+          </p>
 
-  <footer class="public-footer">
-    <div class="footer-cols">
-      <div>
-        <h4>产品</h4>
-        <a>交易员广场</a>
-        <a>自选跟单</a>
-        <a>Hyperliquid Vault</a>
+          <div class="hero-badges">
+            <div class="hbadge">
+              <div class="lbl">ACTIVE FOLLOWERS</div>
+              <div class="val">15 847</div>
+              <div class="delta">+312 / 24H</div>
+            </div>
+            <div class="hbadge">
+              <div class="lbl">MEDIAN EXECUTION</div>
+              <div class="val">&lt;2<span class="unit">ms</span></div>
+              <div class="delta amber">P99 4.1 MS</div>
+            </div>
+            <div class="hbadge">
+              <div class="lbl">30D COPIED VOLUME</div>
+              <div class="val">$284M<span class="unit">+</span></div>
+              <div class="delta">+18.4% MoM</div>
+            </div>
+          </div>
+
+          <div class="hero-ctas">
+            <router-link to="/register" class="btn-cta primary">START TRIAL <span class="arrow">→</span></router-link>
+            <router-link to="/tutorial" class="btn-cta ghost">READ DOCS <span class="arrow">↗</span></router-link>
+          </div>
+
+          <div class="hero-footnote">
+            <span><span class="num">[01]</span> SOC 2 TYPE II</span>
+            <span><span class="num">[02]</span> ZERO PROFIT SHARE</span>
+            <span><span class="num">[03]</span> NON-CUSTODIAL · API KEYS LOCAL</span>
+            <span><span class="num">[04]</span> 99.97% UPTIME · 90D</span>
+          </div>
+        </div>
+
+        <!-- RIGHT -->
+        <div class="hero-right">
+          <div class="panel">
+            <div class="panel-head">
+              <span>BTC-USDT-SWAP · OKX · 1M</span>
+              <div class="right">
+                <span class="badge amber"><span class="dot"></span>LIVE</span>
+                <span>LAT 1.8MS</span>
+              </div>
+            </div>
+            <div ref="chartEl" class="hero-chart"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <span>EXECUTION FEED · /var/log/exec.tail</span>
+              <div class="right">
+                <span>247 EVT/S</span>
+                <span class="badge green"><span class="dot"></span>STREAM</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <LiveLog :rows="execFeed" max-height="200px" />
+            </div>
+          </div>
+        </div>
       </div>
-      <div>
-        <h4>资源</h4>
-        <a>使用教程</a>
-        <a>API 文档</a>
-        <a>更新日志</a>
+    </section>
+
+    <!-- TRUST (D3 editorial style) -->
+    <section class="trust">
+      <div class="sec-head">
+        <div class="sec-title"><span class="amber">02 //</span> ENGINEERING PHILOSOPHY</div>
+        <div class="sec-coord">REF 0x4B.TRUST</div>
       </div>
-      <div>
-        <h4>友情链接</h4>
-        <a href="https://www.binance.com" target="_blank">Binance</a>
-        <a href="https://www.okx.com" target="_blank">OKX</a>
-        <a href="https://hyperliquid.xyz" target="_blank">Hyperliquid</a>
-        <a href="https://www.bicoin.com.cn" target="_blank">币Coin</a>
+      <div class="trust-grid">
+        <EditorialQuote cite="— design doctrine · copy//trader engine">
+          We are not building a marketing website. We are building a console.
+          Every pixel renders a decision the operator already wants to make —
+          faster, with fewer keystrokes, fewer surprises.
+        </EditorialQuote>
+        <EditorialQuote cite="— execution layer · latency budget">
+          Two milliseconds is not a marketing claim, it is a service-level objective
+          enforced by tick-time scheduling, colocated egress, and a single execution
+          path per venue. Everything else is overhead.
+        </EditorialQuote>
       </div>
-    </div>
-    <div class="copyright">© 2026 Copy Trader · 跨交易所智能跟单系统</div>
-  </footer>
+    </section>
+
+    <!-- PRICING -->
+    <section class="pricing">
+      <div class="sec-head">
+        <div class="sec-title"><span class="amber">03 //</span> PRICING · FLAT &amp; TRANSPARENT</div>
+        <div class="sec-coord">NO PROFIT SHARE · MONTH-TO-MONTH</div>
+      </div>
+      <table class="price-table">
+        <thead>
+          <tr>
+            <th>PLAN</th>
+            <th class="r">PRICE</th>
+            <th>INCLUDES</th>
+            <th class="r">CTA</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="tier in tierData" :key="tier.name">
+            <td class="tier-name">{{ tier.name }}</td>
+            <td class="r price">
+              <template v-if="typeof tier.price === 'number'">
+                ${{ tier.price.toFixed(2) }}<span class="period">{{ tier.period }}</span>
+              </template>
+              <template v-else>
+                <span class="amber">{{ tier.price }}</span><span class="period"> {{ tier.period }}</span>
+              </template>
+            </td>
+            <td class="feats">
+              <span v-for="f in tier.features" :key="f" class="feat">{{ f }}</span>
+            </td>
+            <td class="r">
+              <router-link to="/shop" class="link-cta">SUBSCRIBE →</router-link>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="ct-footer">
+      <div class="foot-row">
+        <div class="foot-col">
+          <div class="foot-h">PRODUCT</div>
+          <a>TRADER SQUARE</a>
+          <a>WATCHLIST</a>
+          <a>HYPERLIQUID VAULT</a>
+        </div>
+        <div class="foot-col">
+          <div class="foot-h">RESOURCES</div>
+          <a>DOCS</a>
+          <a>API REFERENCE</a>
+          <a>CHANGELOG</a>
+        </div>
+        <div class="foot-col">
+          <div class="foot-h">VENUES</div>
+          <a href="https://www.binance.com" target="_blank">BINANCE ↗</a>
+          <a href="https://www.okx.com" target="_blank">OKX ↗</a>
+          <a href="https://hyperliquid.xyz" target="_blank">HYPERLIQUID ↗</a>
+          <a href="https://www.bicoin.com.cn" target="_blank">BICOIN ↗</a>
+        </div>
+        <div class="foot-col">
+          <div class="foot-h">STATUS</div>
+          <div class="status-line"><span class="dot green"></span>HOST · ONLINE</div>
+          <div class="status-line"><span class="dot green"></span>SIGNAL BUS · 3.2K OPS/S</div>
+          <div class="status-line"><span class="dot amber"></span>LATENCY · 1.8MS</div>
+          <div class="status-line clock">{{ utcLive }}</div>
+        </div>
+      </div>
+      <div class="copyright">© 2026 COPY//TRADER · CROSS-EXCHANGE COPY TRADING TERMINAL · ALL RIGHTS RESERVED</div>
+    </footer>
+  </div>
 </template>
 
 <style scoped>
-.hero {
-  position: relative;
-  min-height: 70vh;
-  padding: 80px 32px 60px;
-  text-align: center;
+.home {
+  padding: 18px 18px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
 }
-.hero h1 {
-  font-size: 56px;
-  font-weight: 700;
-  line-height: 1.15;
-  margin: 0 0 24px;
-  color: #fff;
-  letter-spacing: -0.02em;
-}
-.grad {
-  background: linear-gradient(135deg, #10B981 0%, #A3E635 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.lead { color: #9CA3AF; font-size: 18px; max-width: 720px; margin: 0 auto 40px; }
-.cta-row { display: flex; gap: 14px; justify-content: center; }
-.cta {
-  padding: 13px 36px;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 15px;
-}
-.cta.primary { background: var(--ct-space-accent); color: #062013; }
-.cta.ghost { color: #e5e7eb; border: 1px solid rgba(255,255,255,0.18); }
 
-.orbits {
-  position: relative;
-  margin: 80px auto 0;
-  width: 520px;
-  height: 360px;
-  max-width: 90vw;
+/* HERO */
+.hero { min-height: 100vh; display: flex; flex-direction: column; }
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 24px;
+  flex: 1;
 }
-.planet {
-  position: absolute;
-  border-radius: 50%;
+.hero-left { display: flex; flex-direction: column; }
+.hero-meta {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: var(--ct-font-mono);
+}
+.hero-meta .amber { color: var(--ct-amber); }
+.hero-meta .sep { color: var(--ct-text-dim); }
+
+.hero-h1 {
+  font-size: 60px;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  font-weight: 500;
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  margin: 0;
+}
+.hero-h1 .em { color: var(--ct-amber); }
+.cursor {
+  color: var(--ct-amber);
+  animation: blink 1s steps(2, start) infinite;
+  font-weight: 700;
+  margin-left: 2px;
+}
+@keyframes blink { to { visibility: hidden; } }
+
+.hero-sub {
+  margin-top: 22px;
+  font-size: 14px;
+  color: var(--ct-text-2);
+  letter-spacing: 0.01em;
+  max-width: 560px;
+  line-height: 1.6;
+  font-family: var(--ct-font-mono);
+}
+.hero-sub .sep { color: var(--ct-text-dim); margin: 0 6px; }
+
+.hero-badges {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 36px;
+  border-top: 1px solid var(--ct-divider);
+  border-bottom: 1px solid var(--ct-divider);
+}
+.hbadge { padding: 18px 16px; border-right: 1px solid var(--ct-divider); }
+.hbadge:last-child { border-right: 0; }
+.hbadge .lbl {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.hbadge .val {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ct-text);
+  font-variant-numeric: tabular-nums;
+}
+.hbadge .val .unit {
+  font-size: 14px;
+  color: var(--ct-text-3);
+  margin-left: 4px;
+  letter-spacing: 0;
+}
+.hbadge .delta {
+  font-size: 11px;
+  color: var(--ct-pos);
+  margin-top: 6px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.hbadge .delta.amber { color: var(--ct-amber); }
+
+.hero-ctas { margin-top: 28px; display: flex; gap: 12px; }
+.btn-cta {
+  height: 40px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  border: 1px solid var(--ct-amber);
+  background: var(--ct-amber);
+  color: #0A0E14;
+  font-family: var(--ct-font-mono);
+  transition: filter 120ms linear;
+}
+.btn-cta:hover { filter: brightness(1.08); }
+.btn-cta.ghost {
+  background: transparent;
+  color: var(--ct-text);
+  border-color: var(--ct-divider-strong);
+}
+.btn-cta.ghost:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
+
+.hero-footnote {
+  margin-top: 28px;
+  font-size: 10px;
+  color: var(--ct-text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: var(--ct-font-mono);
+}
+.hero-footnote .num { color: var(--ct-text-2); margin-right: 4px; }
+
+.hero-right { display: flex; flex-direction: column; gap: 14px; }
+.panel { border: 1px solid var(--ct-divider); background: var(--ct-bg-2); }
+.panel-head {
+  height: 28px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 700;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ct-divider);
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.panel-head .right { display: flex; gap: 8px; align-items: center; }
+.panel-body { padding: 12px; }
+.hero-chart { height: 260px; }
+
+/* TRUST */
+.trust-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+  padding: 12px 0 36px;
+}
+
+/* PRICING */
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ct-font-mono);
+  font-size: 12px;
+  border: 1px solid var(--ct-divider);
+}
+.price-table th,
+.price-table td {
+  padding: 14px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--ct-divider);
+  vertical-align: top;
+}
+.price-table th {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--ct-bg-2);
+  font-weight: 500;
+}
+.price-table .r { text-align: right; }
+.tier-name {
+  color: var(--ct-amber);
+  font-weight: 600;
+  letter-spacing: 0.1em;
   font-size: 14px;
-  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
 }
-.planet.center {
-  left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 96px; height: 96px;
-  background: radial-gradient(circle at 30% 30%, #34D399, #047857);
-  font-size: 24px;
+.price-table .price {
+  color: var(--ct-text);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
-.planet.p1 { left: 15%; top: 30%; width: 40px; height: 40px; background: linear-gradient(135deg, #F59E0B, #D97706); font-size: 11px; }
-.planet.p2 { right: 12%; top: 18%; width: 46px; height: 46px; background: linear-gradient(135deg, #6366F1, #4338CA); font-size: 11px; }
-.planet.p3 { right: 18%; bottom: 14%; width: 38px; height: 38px; background: linear-gradient(135deg, #A78BFA, #7C3AED); font-size: 11px; }
-.planet.p4 { left: 22%; bottom: 22%; width: 42px; height: 42px; background: linear-gradient(135deg, #14B8A6, #0F766E); font-size: 11px; }
-.ring {
-  position: absolute;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
+.price-table .period {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  margin-left: 4px;
+  letter-spacing: 0.06em;
 }
-.ring.r1 { width: 200px; height: 200px; }
-.ring.r2 { width: 320px; height: 320px; }
-.ring.r3 { width: 460px; height: 460px; }
+.feats { display: flex; flex-wrap: wrap; gap: 6px; }
+.feat {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text-2);
+  padding: 2px 8px;
+}
+.link-cta {
+  color: var(--ct-amber);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 
-.features { padding: 80px 32px; max-width: 1180px; margin: 0 auto; }
-.section-title { font-size: 26px; color: #fff; margin: 0 0 28px; }
-.feature-grid {
+/* FOOTER */
+.ct-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ct-divider);
+  font-family: var(--ct-font-mono);
+}
+.foot-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 18px;
-}
-.feature-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 26px;
-  transition: transform 0.18s, border-color 0.18s;
-}
-.feature-card:hover { transform: translateY(-3px); border-color: rgba(16, 185, 129, 0.4); }
-.feature-num { color: var(--ct-space-accent); font-weight: 700; font-size: 13px; letter-spacing: 0.15em; }
-.feature-card h3 { color: #fff; font-size: 18px; margin: 12px 0 10px; }
-.feature-card p { color: #9CA3AF; font-size: 13px; line-height: 1.7; margin: 0; }
-
-.chart-section { padding: 40px 32px 100px; max-width: 1180px; margin: 0 auto; }
-.chart-wrap {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 24px;
-}
-.chart { width: 100%; height: 320px; }
-.muted { color: #6B7280; margin: 0; font-size: 13px; }
-
-.public-footer { padding: 60px 32px 30px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
-.footer-cols {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 32px;
-  max-width: 1180px;
-  margin: 0 auto;
+  padding-bottom: 24px;
 }
-.footer-cols h4 { color: #d1d5db; font-size: 14px; margin: 0 0 14px; }
-.footer-cols a { display: block; color: #6B7280; font-size: 13px; padding: 4px 0; cursor: pointer; }
-.footer-cols a:hover { color: var(--ct-space-accent); }
-.copyright { text-align: center; color: #4B5563; font-size: 12px; margin-top: 40px; }
+.foot-h {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.foot-col a {
+  display: block;
+  color: var(--ct-text-2);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 0;
+}
+.foot-col a:hover { color: var(--ct-amber); }
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--ct-text-2);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.status-line .dot { width: 6px; height: 6px; }
+.status-line .dot.green { background: var(--ct-pos); }
+.status-line .dot.amber { background: var(--ct-amber); }
+.status-line.clock {
+  color: var(--ct-amber);
+  margin-top: 8px;
+  border-top: 1px solid var(--ct-divider);
+  padding-top: 8px;
+}
+.copyright {
+  text-align: center;
+  color: var(--ct-text-dim);
+  font-size: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ct-divider);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 
+@media (max-width: 1100px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-h1 { font-size: 42px; }
+}
 @media (max-width: 768px) {
-  .hero h1 { font-size: 36px; }
-  .lead { font-size: 15px; }
-  .orbits { display: none; }
+  .trust-grid, .foot-row { grid-template-columns: 1fr; }
+  .hero-h1 { font-size: 32px; }
+  .hbadge .val { font-size: 22px; }
 }
 </style>

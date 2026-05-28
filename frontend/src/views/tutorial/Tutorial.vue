@@ -1,162 +1,227 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { formatUTC } from '@/utils/format'
 
 const active = ref('binance')
+const renderTs = ref(formatUTC())
 
 const exchanges = [
   {
     key: 'binance',
-    name: 'Binance',
+    name: 'BINANCE',
     steps: [
-      '登录 binance.com → 进入 用户中心 - API 管理',
-      '点击「创建 API」并完成 2FA 校验',
-      '权限勾选：启用读取、启用合约（USDS-M / COIN-M 期货）',
-      '在合约设置里切换为「双向持仓模式」',
-      '复制 API Key / Secret Key 到本平台账户管理',
-      '如需限制 IP 白名单，将本平台展示的 4 个出口 IP 一并加入'
+      'LOGIN binance.com → USER CENTER · API MANAGEMENT',
+      'CREATE API · COMPLETE 2FA CHALLENGE',
+      'PERMISSIONS · READ ✓ · USDS-M / COIN-M FUTURES ✓',
+      'FUTURES SETTINGS · SWITCH TO HEDGE MODE',
+      'COPY API_KEY / SECRET_KEY INTO CONSOLE',
+      'OPTIONAL: ADD 4 EGRESS IPS TO API IP WHITELIST'
     ]
   },
   {
     key: 'okx',
-    name: 'OKX（欧易）',
+    name: 'OKX',
     steps: [
-      '登录 okx.com → 个人中心 - API',
-      '创建 API，用途选「API 交易」',
-      '权限勾选：交易（必选）、读取',
-      '设置密码短语（passphrase），妥善保存',
-      '账户模式切换为「双向持仓」',
-      '将 API Key / Secret / Passphrase 三段信息填入本平台'
+      'LOGIN okx.com → PROFILE · API',
+      'CREATE API · USE-CASE = API TRADING',
+      'PERMISSIONS · TRADE ✓ · READ ✓',
+      'SET PASSPHRASE · STORE SECURELY',
+      'POSITION MODE · HEDGE',
+      'PROVIDE KEY / SECRET / PASSPHRASE TO CONSOLE'
     ]
   },
   {
     key: 'gate',
-    name: 'Gate.io',
+    name: 'GATE.IO',
     steps: [
-      '登录 gate.io → API 管理',
-      '为本平台单独创建一组 API Key',
-      '权限：永续合约 = 读写；其他选择只读',
-      '在合约设置里启用「双向持仓」',
-      '将 API Key / Secret 填入本平台'
+      'LOGIN gate.io → API MANAGEMENT',
+      'CREATE SEPARATE KEY FOR COPY//TRADER',
+      'PERMS · PERPETUAL = R/W · OTHERS = R/O',
+      'CONTRACT SETTINGS · ENABLE HEDGE MODE',
+      'PASTE KEY / SECRET INTO CONSOLE'
     ]
   },
   {
     key: 'bitget',
-    name: 'Bitget',
+    name: 'BITGET',
     steps: [
-      '登录 bitget.com → API 管理',
-      '创建两类 Key：合约交易 API-Key、带单账户 API-Key',
-      '权限：合约交易、读取；按需开启带单',
-      '切换为「双向持仓」',
-      '将 API Key / Secret / Passphrase 填入本平台'
+      'LOGIN bitget.com → API MANAGEMENT',
+      'CREATE TWO KEYS · CONTRACT-TRADE + LEAD-TRADE',
+      'PERMS · CONTRACT TRADE ✓ · READ ✓',
+      'POSITION MODE · HEDGE',
+      'PROVIDE KEY / SECRET / PASSPHRASE TO CONSOLE'
     ]
   }
 ]
 
 const copyModes = [
   {
-    name: '交易员广场',
-    desc: '直接选择平台已上架的优质带单员，无延迟跟单。适合新手。',
-    pros: ['一键启动', '无须任何配置', '官方维护数据']
+    name: 'TRADER SQUARE',
+    desc: 'Direct selection of platform-curated traders. No delay. Recommended for newcomers.',
+    pros: ['ONE-TAP COPY', 'ZERO CONFIG', 'CURATED FEED']
   },
   {
-    name: '自选跟单',
-    desc: '搜索任意 ID/链接/昵称，支持公开和隐藏持仓，包含 Cookie 跟单（SVIP）。',
-    pros: ['覆盖更广', '可跟未上架交易员', 'SVIP 用户支持 Cookie 实时']
+    name: 'CUSTOM WATCHLIST',
+    desc: 'Search arbitrary trader by link / id / nickname. Supports hidden positions and cookie sessions (SVIP).',
+    pros: ['BROADER COVERAGE', 'NON-CURATED TRADERS', 'SVIP COOKIE REAL-TIME']
   }
 ]
 </script>
 
 <template>
-  <div class="tutorial-page">
-    <h1 class="hero-title">使用教程</h1>
-    <p class="hero-sub">5 分钟完成 API 创建 + 启动跟单</p>
-
-    <div class="exchange-tabs">
-      <el-tabs v-model="active" stretch>
-        <el-tab-pane v-for="ex in exchanges" :key="ex.key" :label="ex.name" :name="ex.key">
-          <div class="steps">
-            <div v-for="(s, idx) in ex.steps" :key="idx" class="step">
-              <div class="num-circle">{{ idx + 1 }}</div>
-              <div class="step-text">{{ s }}</div>
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+  <div class="tut-page">
+    <div class="sec-head">
+      <div class="sec-title"><span class="amber">02 //</span> DOCUMENTATION · 5-MIN ONBOARDING</div>
+      <div class="sec-coord">{{ renderTs }}</div>
     </div>
 
-    <h2 class="section-title">跟单方式</h2>
-    <div class="modes">
-      <div v-for="m in copyModes" :key="m.name" class="mode-card">
-        <h3>{{ m.name }}</h3>
-        <p>{{ m.desc }}</p>
-        <ul>
-          <li v-for="p in m.pros" :key="p">{{ p }}</li>
-        </ul>
+    <div class="ex-tabs">
+      <button
+        v-for="ex in exchanges"
+        :key="ex.key"
+        class="ex-tab"
+        :class="{ active: active === ex.key }"
+        @click="active = ex.key"
+      >
+        {{ ex.name }}
+      </button>
+    </div>
+
+    <div v-for="ex in exchanges" v-show="active === ex.key" :key="ex.key" class="steps">
+      <div v-for="(s, idx) in ex.steps" :key="idx" class="step">
+        <span class="idx">{{ String(idx + 1).padStart(2, '0') }}</span>
+        <span class="body">{{ s }}</span>
       </div>
     </div>
 
-    <h2 class="section-title">双向持仓模式</h2>
-    <div class="note">
-      本平台所有交易所均需开启 <b>双向持仓 (Hedge Mode)</b>，否则可能出现"开仓即平仓"现象。
-      若交易所默认为单向持仓，请按交易所文档切换。
+    <div class="sec-head">
+      <div class="sec-title"><span class="amber">02-B //</span> COPY MODES</div>
+    </div>
+    <div class="modes">
+      <div v-for="m in copyModes" :key="m.name" class="mode">
+        <div class="mode-h">{{ m.name }}</div>
+        <p class="mode-d">{{ m.desc }}</p>
+        <div class="mode-pros">
+          <span v-for="p in m.pros" :key="p" class="pro-chip">{{ p }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hedge-warn">
+      ⚠ ALL VENUES MUST RUN HEDGE MODE · OTHERWISE OPEN ORDERS WILL BE NETTED AGAINST OPPOSING POSITIONS · VERIFY BEFORE COPY-JOB START.
     </div>
   </div>
 </template>
 
 <style scoped>
-.tutorial-page {
+.tut-page {
+  padding: 18px 18px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
   max-width: 1080px;
   margin: 0 auto;
-  padding: 40px 32px 100px;
-  color: #e5e7eb;
 }
-.hero-title { font-size: 36px; color: #fff; margin: 0 0 8px; }
-.hero-sub { color: #9CA3AF; margin: 0 0 32px; }
-.exchange-tabs {
-  background: rgba(14, 20, 27, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 20px 24px;
+
+.ex-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--ct-divider);
 }
-:deep(.el-tabs__nav-wrap::after) { background: rgba(255,255,255,0.08); }
-:deep(.el-tabs__item) { color: #9CA3AF; }
-:deep(.el-tabs__item.is-active) { color: var(--ct-primary); }
-:deep(.el-tabs__active-bar) { background: var(--ct-primary); }
-.steps { display: flex; flex-direction: column; gap: 14px; padding: 12px 0; }
-.step { display: flex; gap: 14px; align-items: flex-start; }
-.num-circle {
-  flex-shrink: 0;
-  width: 28px; height: 28px;
-  background: linear-gradient(135deg, #10B981, #0D9488);
-  color: #fff;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 13px;
+.ex-tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 18px;
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ct-text-2);
+  cursor: pointer;
 }
-.step-text { color: #d1d5db; font-size: 14px; line-height: 1.7; }
-.section-title { font-size: 22px; color: #fff; margin: 36px 0 14px; }
-.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-.mode-card {
-  background: rgba(14, 20, 27, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 22px 24px;
+.ex-tab.active { color: var(--ct-amber); border-bottom-color: var(--ct-amber); }
+.ex-tab:hover:not(.active) { color: var(--ct-text); }
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ct-divider);
 }
-.mode-card h3 { color: var(--ct-primary); margin: 0 0 10px; }
-.mode-card p { color: #d1d5db; line-height: 1.7; }
-.mode-card ul { color: #9CA3AF; padding-left: 18px; margin: 8px 0 0; }
-.mode-card li { padding: 2px 0; }
-.note {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  color: #FCD34D;
-  padding: 14px 18px;
-  border-radius: 10px;
+.step {
+  display: flex;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--ct-divider);
+  font-family: var(--ct-font-mono);
+}
+.step .idx {
+  color: var(--ct-amber);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  min-width: 30px;
+}
+.step .body {
+  color: var(--ct-text);
   font-size: 13px;
-  line-height: 1.7;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--ct-divider);
+}
+.mode {
+  padding: 16px 18px;
+  border-right: 1px solid var(--ct-divider);
+}
+.mode:last-child { border-right: 0; }
+.mode-h {
+  color: var(--ct-amber);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 10px;
+  font-family: var(--ct-font-mono);
+}
+.mode-d {
+  color: var(--ct-text);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+  font-family: var(--ct-font-mono);
+}
+.mode-pros { display: flex; flex-wrap: wrap; gap: 6px; }
+.pro-chip {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text-2);
+  padding: 2px 8px;
+  font-family: var(--ct-font-mono);
+}
+
+.hedge-warn {
+  border: 1px solid rgba(255, 180, 0, 0.35);
+  background: rgba(255, 180, 0, 0.04);
+  color: var(--ct-amber);
+  padding: 12px 14px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
 }
 
 @media (max-width: 768px) {
   .modes { grid-template-columns: 1fr; }
+  .mode { border-right: 0; border-bottom: 1px solid var(--ct-divider); }
+  .mode:last-child { border-bottom: 0; }
 }
 </style>

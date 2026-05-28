@@ -3,6 +3,7 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import StatusBar from '@/components/StatusBar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -18,17 +19,18 @@ onMounted(() => {
 
 async function submit() {
   if (!form.username || !form.password) {
-    ElMessage.warning('请填写用户名和密码')
+    ElMessage.warning('USERNAME & PASSWORD REQUIRED')
     return
   }
   if (form.password !== form.confirm) {
-    ElMessage.warning('两次密码不一致')
+    ElMessage.warning('PASSWORD MISMATCH')
     return
   }
   loading.value = true
   try {
+    await new Promise((r) => setTimeout(r, 800))
     await auth.register(form.username, form.password, form.email, form.invite_code)
-    ElMessage.success('注册成功')
+    ElMessage.success('ACCOUNT PROVISIONED')
     router.push('/console')
   } finally {
     loading.value = false
@@ -37,57 +39,119 @@ async function submit() {
 </script>
 
 <template>
-  <div class="auth-page ct-space ct-space-stars">
+  <div class="auth-shell">
+    <StatusBar />
     <div class="brand-bar" @click="router.push('/')">
-      <img src="/logo.svg" alt="logo" />
-      <span>Copy Trader</span>
+      COPY<span class="slash">//</span>TRADER<span class="ver">ACCOUNT PROVISIONING</span>
     </div>
-    <div class="card">
-      <h1>注册账号</h1>
-      <p class="muted">7 天免费试用，全网交易员任意跟单</p>
 
-      <el-form class="form" @submit.prevent="submit">
-        <el-input v-model="form.username" placeholder="用户名" size="large" />
-        <el-input v-model="form.email" placeholder="邮箱（可选）" size="large" />
-        <el-input v-model="form.password" type="password" placeholder="设置密码" size="large" show-password />
-        <el-input v-model="form.confirm" type="password" placeholder="再次输入密码" size="large" show-password />
-        <el-input v-model="form.invite_code" placeholder="邀请码（可选）" size="large" />
+    <div class="auth-content">
+      <div class="auth-card">
+        <div class="card-head">
+          <span>// CREATE_ACCOUNT</span>
+          <span class="cursor">▌</span>
+        </div>
 
-        <el-button type="primary" size="large" :loading="loading" @click="submit">注册</el-button>
-      </el-form>
+        <div class="card-body">
+          <div class="field">
+            <label>USERNAME</label>
+            <input v-model="form.username" class="under-inp" />
+          </div>
+          <div class="field">
+            <label>EMAIL (OPTIONAL)</label>
+            <input v-model="form.email" class="under-inp" />
+          </div>
+          <div class="field">
+            <label>PASSWORD</label>
+            <input v-model="form.password" type="password" class="under-inp" />
+          </div>
+          <div class="field">
+            <label>CONFIRM PASSWORD</label>
+            <input v-model="form.confirm" type="password" class="under-inp" />
+          </div>
+          <div class="field">
+            <label>INVITE CODE (OPTIONAL)</label>
+            <input v-model="form.invite_code" class="under-inp" />
+          </div>
 
-      <div class="links">
-        <span class="muted">已有账号？</span>
-        <router-link to="/login">登录</router-link>
+          <button class="btn-cta" :disabled="loading" @click="submit">
+            <span v-if="loading">▌ PROVISIONING…</span>
+            <span v-else>REGISTER →</span>
+          </button>
+
+          <div class="links">
+            <span class="dim">HAS ACCOUNT?</span>
+            <router-link to="/login">LOGIN</router-link>
+          </div>
+        </div>
+
+        <div class="card-foot">
+          7-DAY FREE TRIAL · NO PAYMENT INFO REQUIRED
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.auth-page {
-  min-height: 100vh;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 24px;
-  position: relative;
-}
+.auth-shell { min-height: 100vh; background: var(--ct-bg); color: var(--ct-text); padding-top: 22px; display: flex; flex-direction: column; }
 .brand-bar {
-  position: absolute; top: 24px; left: 32px;
-  display: flex; align-items: center; gap: 10px;
-  cursor: pointer; color: #fff; font-weight: 600;
+  height: 52px; display: flex; align-items: center; padding: 0 18px;
+  border-bottom: 1px solid var(--ct-divider); cursor: pointer;
+  font-family: var(--ct-font-mono); font-size: 16px; font-weight: 700;
+  color: var(--ct-text); letter-spacing: 0.02em;
 }
-.brand-bar img { width: 32px; height: 32px; }
-.card {
-  width: 100%; max-width: 440px;
-  background: rgba(14, 20, 27, 0.85);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px; padding: 36px 32px; z-index: 2;
+.brand-bar .slash { color: var(--ct-amber); }
+.brand-bar .ver {
+  font-size: 10px; color: var(--ct-text-3); margin-left: 12px; letter-spacing: 0.12em;
 }
-h1 { color: #fff; font-size: 26px; margin: 0 0 6px; }
-.muted { color: #9CA3AF; margin: 0 0 24px; }
-.form { display: flex; flex-direction: column; gap: 12px; }
-.links { display: flex; gap: 8px; justify-content: center; margin-top: 18px; font-size: 13px; }
-.links a { color: var(--ct-primary); }
+
+.auth-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 18px; }
+.auth-card { width: 100%; max-width: 440px; border: 1px solid var(--ct-divider); background: var(--ct-bg-2); }
+.card-head {
+  height: 36px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; border-bottom: 1px solid var(--ct-divider);
+  font-family: var(--ct-font-mono); font-size: 11px;
+  letter-spacing: 0.12em; color: var(--ct-amber); text-transform: uppercase;
+}
+.cursor { color: var(--ct-amber); animation: blink 1s steps(2, start) infinite; }
+@keyframes blink { to { visibility: hidden; } }
+
+.card-body { padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label {
+  font-size: 10px; color: var(--ct-text-3);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+}
+.under-inp {
+  background: transparent; border: 0;
+  border-bottom: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text); font-family: var(--ct-font-mono);
+  font-size: 14px; padding: 4px 0; outline: 0;
+}
+.under-inp:focus { border-bottom-color: var(--ct-amber); }
+
+.btn-cta {
+  height: 40px; background: var(--ct-amber); border: 1px solid var(--ct-amber);
+  color: #0A0E14; font-family: var(--ct-font-mono);
+  font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-weight: 600; cursor: pointer; margin-top: 6px;
+}
+.btn-cta:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-cta:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.links {
+  display: flex; gap: 10px; justify-content: center;
+  font-family: var(--ct-font-mono); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.links .dim { color: var(--ct-text-3); }
+.links a { color: var(--ct-amber); }
+
+.card-foot {
+  padding: 8px 16px; border-top: 1px solid var(--ct-divider);
+  font-family: var(--ct-font-mono); font-size: 10px;
+  color: var(--ct-text-3); letter-spacing: 0.1em; text-transform: uppercase;
+}
 </style>

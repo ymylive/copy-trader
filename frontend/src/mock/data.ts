@@ -1,11 +1,16 @@
 import type { ExchangeAccount } from '@/api/accounts'
 import type { Trader } from '@/api/traders'
 
+/* =================================================================
+   REAL DATA — sourced from /design/brand-spec.md
+   Do not use lorem ipsum.
+   ================================================================= */
+
 export function mockUser() {
   return {
-    id: 1401,
-    username: 'demo_trader',
-    nickname: 'Demo',
+    id: 52494073,
+    username: 'maietry',
+    nickname: 'Maietry',
     email: 'demo@example.com',
     avatar: '',
     svip: true,
@@ -20,11 +25,12 @@ export function mockLoginResp() {
   }
 }
 
+/* ── 4 accounts — totals from brand-spec ─────────────────────────── */
 export function mockAccounts(): ExchangeAccount[] {
   return [
     {
       id: 1,
-      name: '账户1(标准)',
+      name: 'ACCOUNT_01 BINANCE',
       type: 'standard',
       active: true,
       exchange: 'binance',
@@ -38,7 +44,7 @@ export function mockAccounts(): ExchangeAccount[] {
     },
     {
       id: 2,
-      name: '账户2(标准)',
+      name: 'ACCOUNT_02 OKX',
       type: 'standard',
       active: true,
       exchange: 'okx',
@@ -52,7 +58,7 @@ export function mockAccounts(): ExchangeAccount[] {
     },
     {
       id: 3,
-      name: '账户3(标准)',
+      name: 'ACCOUNT_03 BITGET',
       type: 'standard',
       active: false,
       exchange: 'bitget',
@@ -66,7 +72,7 @@ export function mockAccounts(): ExchangeAccount[] {
     },
     {
       id: 4,
-      name: '账户4(标准)',
+      name: 'ACCOUNT_04 GATE',
       type: 'standard',
       active: true,
       exchange: 'gate',
@@ -81,161 +87,164 @@ export function mockAccounts(): ExchangeAccount[] {
   ]
 }
 
-function curve(seed: number): number[] {
+/* Deterministic equity curve for traders */
+function curve(seed: number, n = 40, base = 1000, vol = 0.04): number[] {
   const r: number[] = []
-  let v = 100
-  for (let i = 0; i < 60; i++) {
-    v += Math.sin(i / 4 + seed) * 6 + (seed % 3) * 0.8 + (Math.random() - 0.4) * 4
+  let v = base
+  const s = (Math.sin(seed) + 1) / 2
+  for (let i = 0; i < n; i++) {
+    v += v * (Math.cos(i * 0.18 + seed) * vol * 0.7 + (s - 0.5) * vol * 0.3)
     r.push(+v.toFixed(2))
   }
   return r
 }
 
+/* ── 8 traders — exact data from brand-spec ─────────────────────── */
 export function mockTraders(): Trader[] {
   return [
     {
-      id: '4988811260243579393',
-      source: 'smart_money',
-      exchange: 'binance',
-      nickname: '拉哪',
+      id: '79346',
+      source: 'bicoin',
+      exchange: 'okx',
+      nickname: '茂茂大魔王',
       avatar: '',
-      tags: ['聪明钱', '隐藏持仓'],
-      enrolled_days: 12,
-      total_pnl: 204209.2,
-      roi: 29.46,
-      scale: 204209.2,
+      tags: ['OKX', 'BICOIN'],
+      enrolled_days: 2209,
+      total_pnl: 1343829.94,
+      roi: 14539.61,
+      scale: 7618.91,
       sharpe: null,
-      win_rate: null,
-      max_drawdown: null,
+      win_rate: 34.40,
+      max_drawdown: 2.57,
       status: 'listed',
       favorited: false,
       curve: curve(1)
     },
     {
-      id: 'BTC_STARDUST_001',
-      source: 'binance',
-      exchange: 'binance',
-      nickname: 'BTC 星辰',
-      avatar: '',
-      tags: ['币安官方'],
-      enrolled_days: 412,
-      total_pnl: 1_482_318.55,
-      roi: 78.9,
-      scale: 980_000,
-      sharpe: 3.4,
-      win_rate: 64.1,
-      max_drawdown: 18.7,
-      status: 'listed',
-      favorited: true,
-      curve: curve(2)
-    },
-    {
-      id: 'MAOMAO_DEMON',
-      source: 'okx',
-      exchange: 'okx',
-      nickname: '茂茂大魔王',
-      avatar: '',
-      tags: ['欧易', '隐藏持仓'],
-      enrolled_days: 287,
-      total_pnl: 612_443.18,
-      roi: 41.2,
-      scale: 540_900,
-      sharpe: 2.7,
-      win_rate: 58.5,
-      max_drawdown: 22.4,
-      status: 'listed',
-      favorited: false,
-      curve: curve(3)
-    },
-    {
-      id: 'WINDFIRE_TRADER',
-      source: 'bitget',
-      exchange: 'bitget',
-      nickname: '风火山林Trader',
-      avatar: '',
-      tags: ['Bitget'],
-      enrolled_days: 142,
-      total_pnl: 92_184.7,
-      roi: 19.4,
-      scale: 220_500,
-      sharpe: 1.9,
-      win_rate: 55.8,
-      max_drawdown: 14.1,
-      status: 'listed',
-      favorited: false,
-      curve: curve(4)
-    },
-    {
-      id: 'MAXIMIZE_SR',
+      id: '369319',
       source: 'bicoin',
       exchange: 'binance',
-      nickname: 'MaximizeSR（私域）',
+      nickname: '风火山林Trader',
       avatar: '',
-      tags: ['币Coin', '私域'],
-      enrolled_days: 95,
-      total_pnl: 51_293.55,
-      roi: 27.5,
-      scale: 138_400,
-      sharpe: 2.1,
-      win_rate: 61.0,
-      max_drawdown: 19.6,
+      tags: ['BINANCE', 'BICOIN'],
+      enrolled_days: 1705,
+      total_pnl: 1927532.79,
+      roi: 6880.06,
+      scale: 89999.16,
+      sharpe: null,
+      win_rate: 45.45,
+      max_drawdown: 6.86,
       status: 'listed',
       favorited: false,
-      curve: curve(5)
+      curve: curve(2, 40, 1000, 0.045)
     },
     {
-      id: '0xC0FFEE...8E5E',
-      source: 'smart_money',
-      exchange: 'evm',
-      nickname: 'WhaleHunter_0xC0FFEE',
+      id: '1030294',
+      source: 'bicoin',
+      exchange: 'okx',
+      nickname: '牛的青山在',
       avatar: '',
-      tags: ['聪明钱', 'EVM'],
-      enrolled_days: 38,
-      total_pnl: 184_239.4,
-      roi: 52.7,
-      scale: 510_000,
-      sharpe: 2.9,
-      win_rate: 58.2,
-      max_drawdown: 11.3,
+      tags: ['OKX', 'BICOIN'],
+      enrolled_days: 899,
+      total_pnl: 297089.72,
+      roi: 10326.49,
+      scale: 13292.43,
+      sharpe: null,
+      win_rate: 75.00,
+      max_drawdown: 1.15,
       status: 'listed',
       favorited: true,
-      curve: curve(6)
+      curve: curve(3, 40, 1000, 0.03)
     },
     {
-      id: 'HL_VAULT_FLARE',
-      source: 'hyperbot',
-      exchange: 'hyperliquid',
-      nickname: 'HL Vault · Flare',
+      id: '951891',
+      source: 'bicoin',
+      exchange: 'okx',
+      nickname: '寒星日照',
       avatar: '',
-      tags: ['Hyperliquid'],
-      enrolled_days: 64,
-      total_pnl: 78_115.0,
-      roi: 33.1,
-      scale: 312_400,
-      sharpe: 2.4,
-      win_rate: 57.4,
-      max_drawdown: 9.8,
+      tags: ['OKX', 'BICOIN'],
+      enrolled_days: 1218,
+      total_pnl: 408565.96,
+      roi: 343.37,
+      scale: 138001.32,
+      sharpe: null,
+      win_rate: 43.33,
+      max_drawdown: 14.51,
       status: 'listed',
       favorited: false,
-      curve: curve(7)
+      curve: curve(4, 40, 1000, 0.038)
     },
     {
-      id: 'BINANCE_DEFI_LEAD',
+      id: '4120066087544364033',
       source: 'binance',
       exchange: 'binance',
-      nickname: 'DeFi Leader',
+      nickname: 'MaximizeSR',
       avatar: '',
-      tags: ['币安官方'],
-      enrolled_days: 562,
-      total_pnl: 894_120.5,
-      roi: 38.4,
-      scale: 1_100_000,
-      sharpe: 3.1,
-      win_rate: 60.2,
-      max_drawdown: 21.8,
+      tags: ['BINANCE', 'HIDDEN'],
+      enrolled_days: 653,
+      total_pnl: -319.96,
+      roi: -6.03,
+      scale: 46358.66,
+      sharpe: 0.06,
+      win_rate: 51.29,
+      max_drawdown: 9.15,
+      status: 'listed',
+      favorited: false,
+      curve: curve(5, 40, 1000, 0.025)
+    },
+    {
+      id: '3779422221599733504',
+      source: 'binance',
+      exchange: 'binance',
+      nickname: 'KNOTMAIN',
+      avatar: '',
+      tags: ['BINANCE', 'LEAD', 'HIDDEN'],
+      enrolled_days: 0,
+      total_pnl: 365404.77,
+      roi: 53.51,
+      scale: NaN,
+      sharpe: 3.20,
+      win_rate: 57.83,
+      max_drawdown: 13.32,
+      status: 'listed',
+      favorited: true,
+      curve: curve(6, 40, 1000, 0.035)
+    },
+    {
+      id: '4030560779244867073',
+      source: 'binance',
+      exchange: 'binance',
+      nickname: '穩定暴擊 Crit',
+      avatar: '',
+      tags: ['BINANCE', 'HIDDEN'],
+      enrolled_days: 715,
+      total_pnl: -102513.70,
+      roi: -57.91,
+      scale: 69091.23,
+      sharpe: -0.05,
+      win_rate: 32.76,
+      max_drawdown: 69.91,
       status: 'invalid',
       favorited: false,
-      curve: curve(8)
+      curve: curve(7, 40, 1000, 0.06)
+    },
+    {
+      id: '3904393221729556225',
+      source: 'binance',
+      exchange: 'binance',
+      nickname: 'Melanya',
+      avatar: '',
+      tags: ['BINANCE', 'HIDDEN'],
+      enrolled_days: 802,
+      total_pnl: 0.00,
+      roi: 0.00,
+      scale: 10177.62,
+      sharpe: -0.13,
+      win_rate: 0.00,
+      max_drawdown: 0.00,
+      status: 'listed',
+      favorited: false,
+      curve: curve(8, 40, 1000, 0.001)
     }
   ]
 }
@@ -244,36 +253,53 @@ export function mockPositions(trader_id: string) {
   return [
     {
       id: 1,
-      side: 'long',
-      symbol: 'BTC-USDT',
+      side: 'long' as const,
+      symbol: 'BTC-USDT-SWAP',
       qty: 0.15,
-      entry: 93210.4,
-      mark: 95128.5,
-      liq: 71200.0,
+      entry: 74180.50,
+      mark: 75128.40,
+      liq: 71200.00,
       margin: 1398.16,
       margin_rate: 8.7,
       realized_pnl: 0,
-      unrealized_pnl: 287.71,
-      pnl_pct: 20.6,
-      tp: '-',
-      sl: '-',
+      unrealized_pnl: 142.18,
+      pnl_pct: 10.16,
+      tp: '—',
+      sl: '—',
       trader_id
     },
     {
       id: 2,
-      side: 'short',
-      symbol: 'ETH-USDT',
+      side: 'short' as const,
+      symbol: 'ETH-USDT-SWAP',
       qty: 1.5,
-      entry: 3540.2,
-      mark: 3502.4,
-      liq: 4108.5,
-      margin: 530.6,
+      entry: 2540.20,
+      mark: 2412.10,
+      liq: 4108.50,
+      margin: 530.60,
       margin_rate: 5.3,
+      realized_pnl: 42.18,
+      unrealized_pnl: 192.15,
+      pnl_pct: 36.21,
+      tp: '—',
+      sl: '—',
+      trader_id
+    },
+    {
+      id: 3,
+      side: 'long' as const,
+      symbol: 'SOL-USDT-SWAP',
+      qty: 12.4,
+      entry: 158.42,
+      mark: 159.10,
+      liq: 142.18,
+      margin: 196.44,
+      margin_rate: 4.2,
       realized_pnl: 0,
-      unrealized_pnl: 56.7,
-      pnl_pct: 10.7,
-      tp: '-',
-      sl: '-',
+      unrealized_pnl: 8.43,
+      pnl_pct: 4.29,
+      tp: '—',
+      sl: '—',
       trader_id
     }
   ]
@@ -281,8 +307,9 @@ export function mockPositions(trader_id: string) {
 
 export function mockLoginHistory() {
   return [
-    { ip: '203.0.113.42', region: '中国·杭州', time: '2026-05-28 09:12:31' },
-    { ip: '198.51.100.7', region: '美国·纽约', time: '2026-05-25 22:01:08' },
-    { ip: '203.0.113.42', region: '中国·杭州', time: '2026-05-21 18:23:11' }
+    { ip: '43.153.149.108', region: 'HK · BGP', time: '2026-05-28 09:12:31 UTC' },
+    { ip: '8.211.140.223', region: 'SG · AWS', time: '2026-05-25 22:01:08 UTC' },
+    { ip: '101.36.104.169', region: 'JP · Tokyo', time: '2026-05-21 18:23:11 UTC' },
+    { ip: '47.245.8.141', region: 'US · LA', time: '2026-05-18 04:48:33 UTC' }
   ]
 }

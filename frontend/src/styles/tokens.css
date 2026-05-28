@@ -1,81 +1,105 @@
+/* ====================================================================
+   D1 BLOOMBERG TERMINAL · DESIGN TOKENS
+   Reference: design/direction_1.html
+   ==================================================================== */
+
 :root {
-  /* Brand */
-  --ct-primary: #10B981;
-  --ct-primary-600: #0D9488;
-  --ct-primary-700: #0F766E;
-  --ct-primary-50: #ECFDF5;
-  --ct-primary-100: #D1FAE5;
-  --ct-accent: #38BDF8;
-  --ct-warn: #F59E0B;
-  --ct-danger: #EF4444;
-  --ct-success: #22C55E;
+  /* ── surface ── */
+  --ct-bg:           #0A0E14;          /* graphite black */
+  --ct-bg-2:         #0E131B;
+  --ct-bg-elevated:  #11151D;
+  --ct-bg-3:         #11171F;
+  --ct-bg-hover:     #161A24;
+  --ct-divider:      rgba(255, 255, 255, 0.08);
+  --ct-divider-strong: rgba(255, 255, 255, 0.16);
 
-  /* Surfaces (light) */
-  --ct-bg: #F5F7F9;
-  --ct-bg-card: #FFFFFF;
-  --ct-bg-elev: #FAFBFC;
-  --ct-border: #E5E7EB;
-  --ct-border-soft: #F1F3F5;
+  /* ── signal color ── */
+  --ct-amber:        #FFB400;
+  --ct-amber-dim:    #8A6200;
+  --ct-amber-soft:   rgba(255, 180, 0, 0.12);
 
-  /* Text */
-  --ct-text-1: #111827;
-  --ct-text-2: #4B5563;
-  --ct-text-3: #9CA3AF;
-  --ct-text-inverse: #FFFFFF;
+  /* ── semantic ── */
+  --ct-pos:          #22C55E;
+  --ct-neg:          #EF4444;
+  --ct-warn:         #FB923C;
+  --ct-warn-soft:    #F59E0B;
+  --ct-info:         #60A5FA;
+  --ct-violet:       #A78BFA;
+  --ct-teal:         #1FCCB1;
+  --ct-binance:      #F0B90B;
 
-  /* Public site (dark space) */
-  --ct-space-bg: #06080C;
-  --ct-space-card: #0E141B;
-  --ct-space-border: #1F2937;
-  --ct-space-text: #E5E7EB;
-  --ct-space-text-mute: #9CA3AF;
-  --ct-space-accent: #A3E635;
+  /* ── text ── */
+  --ct-text:         #E6E8EA;
+  --ct-text-1:       #E6E8EA;
+  --ct-text-2:       #A2A8B2;
+  --ct-text-3:       #6B7280;
+  --ct-text-dim:     #3E4651;
+  --ct-text-inverse: #0A0E14;
 
-  /* Spacing scale */
-  --ct-sp-1: 4px;
-  --ct-sp-2: 8px;
-  --ct-sp-3: 12px;
-  --ct-sp-4: 16px;
-  --ct-sp-5: 20px;
-  --ct-sp-6: 24px;
-  --ct-sp-8: 32px;
+  /* Legacy aliases kept so existing pages compile (mapped to D1 palette) */
+  --ct-primary:      #FFB400;
+  --ct-primary-600:  #C68800;
+  --ct-primary-700:  #8A6200;
+  --ct-primary-50:   rgba(255, 180, 0, 0.12);
+  --ct-primary-100:  rgba(255, 180, 0, 0.18);
+  --ct-accent:       #60A5FA;
+  --ct-danger:       #EF4444;
+  --ct-success:      #22C55E;
+  --ct-bg-card:      #0E131B;
+  --ct-bg-elev:      #11171F;
+  --ct-border:       rgba(255, 255, 255, 0.08);
+  --ct-border-soft:  rgba(255, 255, 255, 0.04);
+  --ct-space-bg:     #0A0E14;
+  --ct-space-card:   #0E131B;
+  --ct-space-border: rgba(255, 255, 255, 0.08);
+  --ct-space-text:   #E6E8EA;
+  --ct-space-text-mute: #A2A8B2;
+  --ct-space-accent: #FFB400;
+
+  /* ── typography ── */
+  --ct-font-mono:    'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace;
+  --ct-font-sans:    var(--ct-font-mono);
+  --ct-font-serif:   'Newsreader', 'EB Garamond', Georgia, serif;
+
+  /* ── radius (锐角) ── */
+  --ct-radius:       0px;
+  --ct-radius-soft:  2px;
+  --ct-r-sm:         0px;
+  --ct-r-md:         0px;
+  --ct-r-lg:         0px;
+  --ct-r-xl:         0px;
+
+  /* ── spacing 4-base ── */
+  --ct-sp-1:  4px;
+  --ct-sp-2:  8px;
+  --ct-sp-3:  12px;
+  --ct-sp-4:  16px;
+  --ct-sp-5:  20px;
+  --ct-sp-6:  24px;
+  --ct-sp-8:  32px;
   --ct-sp-10: 40px;
   --ct-sp-12: 48px;
 
-  /* Radius */
-  --ct-r-sm: 6px;
-  --ct-r-md: 10px;
-  --ct-r-lg: 14px;
-  --ct-r-xl: 20px;
+  /* ── type scale ── */
+  --ct-fs-xs:   11px;
+  --ct-fs-sm:   12px;
+  --ct-fs-base: 13px;
+  --ct-fs-md:   14px;
+  --ct-fs-lg:   18px;
+  --ct-fs-xl:   24px;
+  --ct-fs-2xl:  32px;
+  --ct-fs-3xl:  48px;
+  --ct-fs-4xl:  60px;
 
-  /* Shadow */
-  --ct-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --ct-shadow-md: 0 6px 18px rgba(15, 23, 42, 0.06);
-  --ct-shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.08);
-
-  /* Fonts */
-  --ct-font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
-    "Helvetica Neue", Helvetica, Arial, "Segoe UI", Roboto, sans-serif;
-  --ct-font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-
-  /* Element Plus overrides */
-  --el-color-primary: var(--ct-primary);
-  --el-color-primary-light-3: #34D399;
-  --el-color-primary-light-5: #6EE7B7;
-  --el-color-primary-light-7: #A7F3D0;
-  --el-color-primary-light-8: #BBF7D0;
-  --el-color-primary-light-9: var(--ct-primary-50);
-  --el-color-primary-dark-2: var(--ct-primary-600);
-  --el-border-radius-base: 8px;
+  /* ── effects (no shadow in terminal aesthetic) ── */
+  --ct-shadow-none: none;
+  --ct-shadow-sm:   none;
+  --ct-shadow-md:   none;
+  --ct-shadow-lg:   none;
+  --ct-blink-cursor: 1s steps(2, start) infinite;
 }
 
-html.dark {
-  --ct-bg: #06080C;
-  --ct-bg-card: #0E141B;
-  --ct-bg-elev: #131A22;
-  --ct-border: #1F2937;
-  --ct-border-soft: #1A222B;
-  --ct-text-1: #F3F4F6;
-  --ct-text-2: #C7CDD3;
-  --ct-text-3: #6B7280;
+/* Force dark mode for terminal aesthetic */
+html.dark, html {
+  color-scheme: dark;
 }

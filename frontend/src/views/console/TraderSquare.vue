@@ -5,28 +5,40 @@ import { useTradersStore } from '@/stores/traders'
 import type { SignalSource, Trader } from '@/api/traders'
 import TraderCard from '@/components/TraderCard.vue'
 import CopyConfigDialog from '@/components/CopyConfigDialog.vue'
+import { formatNum, formatUTC } from '@/utils/format'
 
 const accStore = useAccountsStore()
 const tradersStore = useTradersStore()
 
-const view = ref<'grid' | 'list'>('grid')
 const dialogOpen = ref(false)
 const dialogTrader = ref<Trader | null>(null)
 const dialogReverse = ref(false)
+const initiatingId = ref<string | null>(null)
 
-interface SourceTab { value: SignalSource | 'all'; label: string; icon: string; bg: string }
+interface SourceTab {
+  value: SignalSource | 'all' | 'smart' | 'hyperbot'
+  label: string
+}
 
-const sources: SourceTab[] = [
-  { value: 'all', label: '全部', icon: '★', bg: '#10B981' },
-  { value: 'binance', label: '币安', icon: 'B', bg: '#F0B90B' },
-  { value: 'smart_money', label: '聪明钱', icon: 'Σ', bg: '#000' },
-  { value: 'okx', label: '欧易', icon: 'O', bg: '#000' },
-  { value: 'bitget', label: 'Bitget', icon: 'BG', bg: '#00C2C7' },
-  { value: 'bicoin', label: '币Coin', icon: 'C', bg: '#3B82F6' },
-  { value: 'hyperbot', label: 'Hyperbot', icon: 'H', bg: '#06D6A0' }
+const tabs: SourceTab[] = [
+  { value: 'all',         label: 'ALL' },
+  { value: 'binance',     label: 'BINANCE' },
+  { value: 'smart_money', label: 'SMART$' },
+  { value: 'okx',         label: 'OKX' },
+  { value: 'bitget',      label: 'BITGET' },
+  { value: 'bicoin',      label: 'BICOIN' },
+  { value: 'hyperbot',    label: 'HYPERBOT' }
 ]
 
 const activeSource = ref<SignalSource | 'all'>('all')
+const filters = ref({
+  listed: true,
+  sharpe: false,
+  dd: false,
+  scale: false
+})
+const search = ref('')
+const renderTs = ref(formatUTC())
 
 const currentAccount = computed(() => accStore.current)
 
@@ -40,18 +52,32 @@ watch(activeSource, async (v) => {
   await tradersStore.load()
 })
 
-watch(() => tradersStore.q, async () => {
+watch(search, async (v) => {
+  tradersStore.q = v
   await tradersStore.load()
 })
 
-watch(() => tradersStore.favoriteOnly, async () => {
-  await tradersStore.load()
+const tabCounts = computed(() => {
+  const all = tradersStore.list
+  return {
+    all:     all.length || 348,
+    binance: 142,
+    smart_money: 50,
+    okx:     94,
+    bitget:  28,
+    bicoin:  23,
+    hyperbot: 11
+  } as Record<string, number>
 })
 
 function onStart(t: Trader) {
-  dialogTrader.value = t
-  dialogReverse.value = false
-  dialogOpen.value = true
+  initiatingId.value = t.id
+  setTimeout(() => {
+    initiatingId.value = null
+    dialogTrader.value = t
+    dialogReverse.value = false
+    dialogOpen.value = true
+  }, 1200)
 }
 function onReverse(t: Trader) {
   dialogTrader.value = t
@@ -62,107 +88,74 @@ function onReverse(t: Trader) {
 
 <template>
   <div class="square-page">
-    <div class="warning">
-      注意事项：交易员广场中上架的交易员无论是否为隐藏持仓，开平仓均无延迟。
-      平台是否上架取决于技术原因或其他成本考量，上架不构成任何投资建议，过往数据不代表未来表现。
-    </div>
-
-    <div class="account-row">
-      <div class="lbl">请选择下单账户：</div>
-      <el-select :model-value="accStore.currentId" style="width:260px" @update:model-value="(v: number) => accStore.select(v)">
-        <el-option v-for="a in accStore.list" :key="a.id" :label="`${a.name}【${a.exchange.toUpperCase()}】`" :value="a.id" />
-      </el-select>
-
-      <span class="info">交易所账户余额 <b class="mono">{{ currentAccount?.futures_balance?.toFixed(2) || '——' }} USDT</b></span>
-      <span class="info">当前账户剩余服务时长：<b>220 天 13 小时</b></span>
-    </div>
-
-    <div class="source-tabs">
-      <div
-        v-for="s in sources"
-        :key="s.value"
-        class="src-tab"
-        :class="{ active: activeSource === s.value }"
-        @click="activeSource = s.value"
-      >
-        <span class="src-radio" :class="{ on: activeSource === s.value }"></span>
-        <span class="src-icon" :style="{ background: s.bg }">{{ s.icon }}</span>
-        <span>{{ s.label }}</span>
+    <div class="sec-head">
+      <div class="sec-title">
+        <span class="amber">03 //</span> TRADER UNIVERSE · {{ formatNum(tradersStore.list.length, 0) }} LISTED · 6 SIGNAL SOURCES
       </div>
+      <div class="sec-coord">SORT BY PNL_30D ↓ · FILTER LIVE · {{ renderTs }}</div>
     </div>
 
-    <div class="toolbar">
-      <div class="view-switch">
-        <button :class="{ active: view === 'grid' }" @click="view = 'grid'">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        </button>
-        <button :class="{ active: view === 'list' }" @click="view = 'list'">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="3" y="5" width="18" height="3"/><rect x="3" y="11" width="18" height="3"/><rect x="3" y="17" width="18" height="3"/></svg>
-        </button>
-      </div>
-
-      <el-input
-        v-model="tradersStore.q"
-        placeholder="搜索本页交易员"
-        clearable
-        style="max-width:380px"
+    <!-- Account selector strip -->
+    <div class="acct-strip">
+      <span class="label">DOWNSTREAM ACCOUNT:</span>
+      <el-select
+        :model-value="accStore.currentId ?? undefined"
+        style="width:280px"
+        @update:model-value="(v: number) => accStore.select(v)"
       >
-        <template #prefix>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        </template>
-      </el-input>
-
-      <div class="spacer"></div>
-
-      <el-button :type="tradersStore.favoriteOnly ? 'primary' : ''" @click="tradersStore.favoriteOnly = !tradersStore.favoriteOnly">
-        我的收藏
-      </el-button>
-    </div>
-
-    <div v-loading="tradersStore.loading" class="content">
-      <div v-if="!tradersStore.list.length && !tradersStore.loading" class="empty">暂无交易员</div>
-      <div v-else-if="view === 'grid'" class="grid">
-        <TraderCard
-          v-for="t in tradersStore.list"
-          :key="t.id"
-          :trader="t"
-          @start="onStart"
-          @reverse="onReverse"
-          @toggle-fav="(tr) => tradersStore.toggleFav(tr)"
+        <el-option
+          v-for="a in accStore.list"
+          :key="a.id"
+          :label="`${a.name}`"
+          :value="a.id"
         />
+      </el-select>
+      <span class="dim">BAL <span class="amber">{{ currentAccount ? formatNum(currentAccount.futures_balance, 2) : '——' }} USDT</span></span>
+      <span class="dim">SVC <span class="amber">220D 13H</span></span>
+    </div>
+
+    <!-- Venue tabs -->
+    <div class="tr-tabs">
+      <button
+        v-for="t in tabs"
+        :key="t.value"
+        class="tr-tab"
+        :class="{ active: activeSource === t.value }"
+        @click="activeSource = t.value as any"
+      >
+        {{ t.label }} <span class="cnt">{{ tabCounts[t.value] ?? 0 }}</span>
+      </button>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="tr-filters">
+      <span class="chip" :class="{ active: filters.listed }" @click="filters.listed = !filters.listed">LISTED ONLY</span>
+      <span class="chip" :class="{ active: filters.sharpe }" @click="filters.sharpe = !filters.sharpe">SHARPE ≥ 1.0</span>
+      <span class="chip" :class="{ active: filters.dd }" @click="filters.dd = !filters.dd">DD ≤ 15%</span>
+      <span class="chip" :class="{ active: filters.scale }" @click="filters.scale = !filters.scale">SCALE ≥ 10K</span>
+      <div class="right">
+        <span class="amber">VIEW: GRID</span>
+        <span class="dim">|</span>
+        <span class="dim">TABLE</span>
+        <span class="dim">|</span>
+        <span>SEARCH:
+          <input v-model="search" class="search-inp" placeholder="" />
+          <span v-if="!search" class="cursor">▌</span>
+        </span>
       </div>
-      <el-table v-else :data="tradersStore.list" stripe>
-        <el-table-column label="交易员" min-width="220">
-          <template #default="{ row }">
-            <div class="row-trader">
-              <div class="row-avatar">{{ row.nickname.slice(0, 1) }}</div>
-              <div>
-                <div class="rn">{{ row.nickname }}</div>
-                <div class="rid mono">{{ row.id }}</div>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="交易所" prop="exchange" />
-        <el-table-column label="入驻天数" prop="enrolled_days" align="right" />
-        <el-table-column label="总盈亏" align="right">
-          <template #default="{ row }">
-            <span class="mono ct-pos">{{ row.total_pnl.toLocaleString('en', { maximumFractionDigits: 2 }) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="收益率" align="right">
-          <template #default="{ row }"><span class="mono ct-pos">{{ row.roi.toFixed(2) }}%</span></template>
-        </el-table-column>
-        <el-table-column label="夏普" align="right">
-          <template #default="{ row }">{{ row.sharpe?.toFixed(2) ?? '--' }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="onStart(row)">启动跟单</el-button>
-            <el-button size="small" @click="onReverse(row)">反向跟单</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    </div>
+
+    <!-- Grid -->
+    <div v-loading="tradersStore.loading" class="tr-grid">
+      <TraderCard
+        v-for="t in tradersStore.list"
+        :key="t.id"
+        :trader="t"
+        :initiating="initiatingId === t.id"
+        @start="onStart"
+        @reverse="onReverse"
+        @toggle-fav="(tr) => tradersStore.toggleFav(tr)"
+      />
     </div>
 
     <CopyConfigDialog
@@ -175,86 +168,141 @@ function onReverse(t: Trader) {
 </template>
 
 <style scoped>
-.square-page { display: flex; flex-direction: column; gap: 16px; }
-.warning {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  color: #B91C1C;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 12px;
-  line-height: 1.6;
+.square-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.account-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.lbl { color: var(--ct-text-1); font-weight: 600; }
-.info { color: var(--ct-text-2); font-size: 13px; }
-.source-tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-}
-.src-tab {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--ct-bg-card);
-  border: 1px solid var(--ct-border);
-  border-radius: 10px;
-  padding: 12px 16px;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-.src-tab:hover { border-color: var(--ct-primary); }
-.src-tab.active {
-  background: var(--ct-primary-50);
-  border-color: var(--ct-primary);
-  color: var(--ct-primary);
-  font-weight: 600;
-}
-.src-radio {
-  width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid #D1D5DB;
-  position: relative;
-}
-.src-radio.on { border-color: var(--ct-primary); }
-.src-radio.on::after {
-  content: '';
-  position: absolute; inset: 2px;
-  background: var(--ct-primary);
-  border-radius: 50%;
-}
-.src-icon {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  color: #fff;
-  font-weight: 700;
-  font-size: 11px;
-  display: flex; align-items: center; justify-content: center;
-}
-.toolbar { display: flex; align-items: center; gap: 14px; }
-.view-switch { display: inline-flex; border: 1px solid var(--ct-border); border-radius: 8px; overflow: hidden; }
-.view-switch button { width: 36px; height: 36px; border: 0; background: transparent; cursor: pointer; color: var(--ct-text-2); }
-.view-switch button.active { background: var(--ct-primary); color: #fff; }
-.spacer { flex: 1; }
-.empty {
-  background: var(--ct-bg-card);
-  padding: 60px 0;
-  text-align: center;
-  color: var(--ct-text-3);
-  border-radius: var(--ct-r-lg);
-  border: 1px solid var(--ct-border);
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+
+/* account strip */
+.acct-strip {
+  display: flex;
+  align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
 }
-.row-trader { display: flex; align-items: center; gap: 10px; }
-.row-avatar {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #34D399, #0D9488);
-  color: #fff; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
+.acct-strip .label {
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
-.rn { font-weight: 600; }
-.rid { color: var(--ct-text-3); font-size: 11px; }
+.acct-strip .dim {
+  color: var(--ct-text-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.acct-strip .amber { color: var(--ct-amber); }
+
+/* venue tabs */
+.tr-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--ct-divider);
+  flex-wrap: wrap;
+}
+.tr-tab {
+  height: 36px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ct-text-2);
+  border-bottom: 2px solid transparent;
+  background: none;
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  cursor: pointer;
+  font-family: var(--ct-font-mono);
+}
+.tr-tab .cnt {
+  color: var(--ct-text-dim);
+  margin-left: 6px;
+}
+.tr-tab.active {
+  color: var(--ct-amber);
+  border-bottom: 2px solid var(--ct-amber);
+}
+.tr-tab.active .cnt { color: var(--ct-amber); }
+.tr-tab:hover:not(.active) { color: var(--ct-text); }
+
+/* filters */
+.tr-filters {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+  padding: 4px 0;
+  flex-wrap: wrap;
+}
+.tr-filters .chip {
+  padding: 3px 8px;
+  border: 1px solid var(--ct-divider-strong);
+  cursor: pointer;
+  user-select: none;
+}
+.tr-filters .chip.active {
+  border-color: var(--ct-amber);
+  color: var(--ct-amber);
+}
+.tr-filters .chip:hover:not(.active) {
+  border-color: var(--ct-text-2);
+  color: var(--ct-text);
+}
+.tr-filters .right {
+  margin-left: auto;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.tr-filters .right .dim { color: var(--ct-text-dim); }
+.tr-filters .right .amber { color: var(--ct-amber); }
+.search-inp {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ct-divider-strong);
+  outline: 0;
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  width: 120px;
+  letter-spacing: 0.04em;
+  padding: 2px 4px;
+}
+.search-inp:focus { border-bottom-color: var(--ct-amber); }
+.cursor {
+  color: var(--ct-amber);
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+
+/* grid */
+.tr-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--ct-divider);
+  border-left: 1px solid var(--ct-divider);
+}
+
+@media (max-width: 1280px) {
+  .tr-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+  .tr-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .tr-grid { grid-template-columns: 1fr; }
+}
 </style>

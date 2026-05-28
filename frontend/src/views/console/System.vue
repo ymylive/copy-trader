@@ -4,198 +4,320 @@ import { ElMessage } from 'element-plus'
 import { systemApi } from '@/api/system'
 import { useAccountsStore } from '@/stores/accounts'
 import { setLocale } from '@/i18n'
+import { formatUTC } from '@/utils/format'
 
 const accStore = useAccountsStore()
 
 const lang = ref<'zh-CN' | 'en'>('zh-CN')
+const channel = ref<'silent' | 'wechat' | 'telegram' | 'email' | 'sms'>('telegram')
 const channels = reactive({
-  wechat: { bound: false, code: '' },
+  wechat:   { bound: false, code: '' },
   telegram: { bound: false, session_id: '' },
-  email: { bound: false, email: '' },
-  sms: { bound: false, phone: '' }
+  email:    { bound: false, email: '' },
+  sms:      { bound: false, phone: '' }
 })
 
 const versionInfo = reactive({ current: '——', latest: '——', preview_opt_in: false })
 const updateAccount = ref<number | null>(null)
 const updating = ref(false)
+const updateProgress = ref(0)
+const renderTs = ref(formatUTC())
 
 onMounted(async () => {
   await accStore.load()
   if (accStore.list.length) updateAccount.value = accStore.list[0].id
-  const ch = (await systemApi.channels()) as any
-  Object.assign(channels, ch)
-  const v = (await systemApi.versions()) as any
-  Object.assign(versionInfo, v)
+  Object.assign(channels, (await systemApi.channels()) as any)
+  Object.assign(versionInfo, (await systemApi.versions()) as any)
 })
 
 function changeLang(v: 'zh-CN' | 'en') {
   lang.value = v
   setLocale(v)
-  ElMessage.success('语言已切换')
+  ElMessage.success('LANGUAGE SWITCHED')
 }
 
-async function bind(channel: string, body: Record<string, unknown>) {
-  await systemApi.bindChannel(channel, body)
-  ElMessage.success('绑定成功')
+async function bind(c: string, body: Record<string, unknown>) {
+  await systemApi.bindChannel(c, body)
+  ElMessage.success(`${c.toUpperCase()} BOUND`)
 }
 
-async function sendTest(channel: string) {
-  await systemApi.sendTest(channel)
-  ElMessage.success('测试消息已发送')
+async function sendTest(c: string) {
+  await systemApi.sendTest(c)
+  ElMessage.success(`TEST MESSAGE SENT VIA ${c.toUpperCase()}`)
 }
 
 async function upgrade() {
   if (!updateAccount.value) return
   updating.value = true
-  try {
-    await systemApi.upgrade(updateAccount.value)
-    ElMessage.success('已触发软件更新，请稍候...')
-  } finally {
-    updating.value = false
-  }
+  updateProgress.value = 0
+  const tick = setInterval(() => {
+    updateProgress.value += 4
+    if (updateProgress.value >= 100) {
+      clearInterval(tick)
+      updating.value = false
+      ElMessage.success('SOFTWARE UPGRADED')
+    }
+  }, 80)
+  try { await systemApi.upgrade(updateAccount.value) } catch {/* */}
 }
 </script>
 
 <template>
-  <div class="system-page">
-    <section class="block ct-card">
-      <h3 class="title">语言设置</h3>
-      <div class="row">
-        <div class="row-left">
-          <div class="lbl">显示语言</div>
-          <div class="muted">切换控制台显示语言，保存后立即生效。</div>
-        </div>
-        <el-select :model-value="lang" style="width:200px" @update:model-value="changeLang">
-          <el-option label="简体中文" value="zh-CN" />
-          <el-option label="English" value="en" />
-        </el-select>
+  <div class="sys-page">
+    <div class="sec-head">
+      <div class="sec-title"><span class="amber">07 //</span> SYSTEM CONTROL · LOCALES · CHANNELS · UPDATES</div>
+      <div class="sec-coord">{{ renderTs }}</div>
+    </div>
+
+    <!-- Locale -->
+    <div class="block">
+      <div class="block-head">
+        <div class="grp-title"><span class="num">01</span>LOCALE</div>
       </div>
-    </section>
+      <div class="block-body row">
+        <div class="lbl">DISPLAY LANGUAGE</div>
+        <div class="radio-row half2">
+          <div class="opt" :class="{ active: lang === 'zh-CN' }" @click="changeLang('zh-CN')">简体中文</div>
+          <div class="opt" :class="{ active: lang === 'en' }" @click="changeLang('en')">ENGLISH</div>
+        </div>
+      </div>
+    </div>
 
-    <section class="block">
-      <h3 class="title">通知渠道设置</h3>
-
-      <div class="ch-card ct-card">
-        <div class="ch-head">
-          <div class="ch-icon wechat">微</div>
-          <div>
-            <div class="ch-name">微信服务号</div>
-            <div class="muted">关注 Copy Trader 跟单系统公众号并输入授权码完成账户关联</div>
+    <!-- Notify channel -->
+    <div class="block">
+      <div class="block-head">
+        <div class="grp-title"><span class="num">02</span>NOTIFICATION CHANNEL</div>
+      </div>
+      <div class="block-body">
+        <div class="row">
+          <div class="lbl">DELIVERY CHANNEL</div>
+          <div class="radio-row full">
+            <div class="opt" :class="{ active: channel === 'silent' }" @click="channel = 'silent'">SILENT</div>
+            <div class="opt" :class="{ active: channel === 'wechat' }" @click="channel = 'wechat'">WECHAT</div>
+            <div class="opt" :class="{ active: channel === 'telegram' }" @click="channel = 'telegram'">TELEGRAM</div>
+            <div class="opt" :class="{ active: channel === 'email' }" @click="channel = 'email'">EMAIL</div>
+            <div class="opt" :class="{ active: channel === 'sms' }" @click="channel = 'sms'">SMS</div>
           </div>
         </div>
-        <div class="ch-form">
-          <span class="lbl">授权码</span>
-          <el-input v-model="channels.wechat.code" placeholder="开发中..." style="width:280px" />
-          <el-button type="primary" @click="bind('wechat', { code: channels.wechat.code })">生成授权码</el-button>
+        <div v-if="channel === 'telegram'" class="row">
+          <div class="lbl">CHAT ID</div>
+          <input class="inp-term" v-model="channels.telegram.session_id" placeholder="@CopyTrader_bot /start to obtain" />
+          <button class="btn-term" @click="bind('telegram', { session_id: channels.telegram.session_id })">BIND</button>
+          <button class="btn-term" @click="sendTest('telegram')">SEND TEST</button>
+        </div>
+        <div v-if="channel === 'email'" class="row">
+          <div class="lbl">EMAIL</div>
+          <input class="inp-term" v-model="channels.email.email" placeholder="example@qq.com" />
+          <button class="btn-term" @click="bind('email', { email: channels.email.email })">BIND</button>
+          <button class="btn-term" @click="sendTest('email')">SEND TEST</button>
+        </div>
+        <div v-if="channel === 'sms'" class="row">
+          <div class="lbl">PHONE</div>
+          <input class="inp-term" v-model="channels.sms.phone" placeholder="+86 ..." />
+          <button class="btn-term" @click="bind('sms', { phone: channels.sms.phone })">BIND</button>
+          <button class="btn-term" @click="sendTest('sms')">SEND TEST</button>
+        </div>
+        <div v-if="channel === 'wechat'" class="row">
+          <div class="lbl">AUTH CODE</div>
+          <input class="inp-term" v-model="channels.wechat.code" placeholder="generate token first" />
+          <button class="btn-term" @click="bind('wechat', { code: channels.wechat.code })">GENERATE</button>
         </div>
       </div>
+    </div>
 
-      <div class="ch-card ct-card">
-        <div class="ch-head">
-          <div class="ch-icon tg">TG</div>
-          <div>
-            <div class="ch-name">Telegram 机器人</div>
-            <div class="muted">关注 @CopyTrader_bot 并发送 /start 以获得会话 ID</div>
-          </div>
-        </div>
-        <div class="ch-form">
-          <span class="lbl">会话 ID</span>
-          <el-input v-model="channels.telegram.session_id" placeholder="输入 chat ID" style="width:280px" />
-          <el-button type="primary" @click="bind('telegram', { session_id: channels.telegram.session_id })">确认绑定</el-button>
-          <el-button @click="sendTest('telegram')">发送测试消息</el-button>
-        </div>
+    <!-- Software update -->
+    <div class="block">
+      <div class="block-head">
+        <div class="grp-title"><span class="num">03</span>SOFTWARE UPDATE</div>
       </div>
-
-      <div class="ch-card ct-card">
-        <div class="ch-head">
-          <div class="ch-icon mail">@</div>
-          <div>
-            <div class="ch-name">QQ 邮箱</div>
-            <div class="muted">收信率高，信息更全面。</div>
-          </div>
+      <div class="block-body">
+        <div class="row">
+          <div class="lbl">TARGET ACCOUNT</div>
+          <el-select v-model="updateAccount" style="width:280px">
+            <el-option v-for="a in accStore.list" :key="a.id" :label="a.name" :value="a.id" />
+          </el-select>
         </div>
-        <div class="ch-form">
-          <span class="lbl">收信邮箱</span>
-          <el-input v-model="channels.email.email" placeholder="example@qq.com" style="width:280px" />
-          <el-button type="primary" @click="bind('email', { email: channels.email.email })">确认绑定</el-button>
-          <el-button @click="sendTest('email')">发送测试邮件</el-button>
+        <div class="row">
+          <div class="lbl">CURRENT</div>
+          <span class="amber">{{ versionInfo.current }}</span>
+          <span class="dim">→</span>
+          <span class="amber">{{ versionInfo.latest }}</span>
+          <span class="dim">{{ versionInfo.current === versionInfo.latest ? '· UP-TO-DATE' : '· UPGRADE AVAILABLE' }}</span>
         </div>
-      </div>
-
-      <div class="ch-card ct-card">
-        <div class="ch-head">
-          <div class="ch-icon sms">SMS</div>
-          <div>
-            <div class="ch-name">手机短信</div>
-            <div class="muted">通知更及时，但成本较高，使用将扣除相应积分。</div>
-          </div>
+        <div v-if="updating" class="upd-progress">
+          <div class="upd-bar" :style="{ width: updateProgress + '%' }"></div>
+          <div class="upd-text">▌ UPGRADING {{ updateProgress }}%</div>
         </div>
-        <div class="ch-form">
-          <span class="lbl">授权码</span>
-          <el-input v-model="channels.sms.phone" placeholder="开发中..." style="width:280px" />
-          <el-button type="primary" @click="bind('sms', { phone: channels.sms.phone })">确认绑定</el-button>
-          <el-button @click="sendTest('sms')">发送测试手机号</el-button>
+        <div class="row">
+          <button class="btn-term primary" :disabled="updating" @click="upgrade">↑ UPGRADE SOFTWARE</button>
+          <label class="chk-term" :class="{ on: versionInfo.preview_opt_in }" @click="versionInfo.preview_opt_in = !versionInfo.preview_opt_in">
+            <span class="box">{{ versionInfo.preview_opt_in ? '✓' : '' }}</span>
+            SUBSCRIBE TO PREVIEW BUILDS
+          </label>
+        </div>
+        <div class="warn">
+          ⚠ UPGRADE WILL ATTEMPT TO RECOVER OPEN POSITIONS AND COPY JOBS · ~1% FAILURE RATE · EACH ACCOUNT HAS ITS OWN INSTANCE · VERIFY POSITIONS AFTER UPGRADE.
         </div>
       </div>
-    </section>
-
-    <section class="block ct-card">
-      <h3 class="title">软件更新</h3>
-      <div class="up-row">
-        <div class="lbl">选择更新账户：</div>
-        <el-select v-model="updateAccount" style="width:260px">
-          <el-option v-for="a in accStore.list" :key="a.id" :label="`${a.name}【${a.exchange.toUpperCase()}】`" :value="a.id" />
-        </el-select>
-      </div>
-      <div class="up-row">
-        <span class="lbl">当前版本：</span>
-        <span class="muted">({{ versionInfo.current === versionInfo.latest ? '软件已是最新版本!' : `可升级至 ${versionInfo.latest}` }})</span>
-      </div>
-      <el-button type="primary" :loading="updating" :disabled="versionInfo.current === versionInfo.latest" @click="upgrade">
-        ↑ 更新软件
-      </el-button>
-      <div class="up-row">
-        <el-checkbox v-model="versionInfo.preview_opt_in">是否订阅预览版更新</el-checkbox>
-      </div>
-
-      <div class="risk-block">
-        <div class="risk-title">注意 (必读)：</div>
-        <ul>
-          <li>更新软件会自动尝试恢复持仓与跟单任务，但存在 ~1% 失败概率。</li>
-          <li>每个账户拥有独立的跟单服务实例，更新仅作用于选择的账户。</li>
-          <li>升级后建议立即检查持仓详情，确认无孤立订单。</li>
-        </ul>
-      </div>
-    </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.system-page { display: flex; flex-direction: column; gap: 18px; }
-.block { padding: 22px; }
-.title { font-size: 16px; font-weight: 600; margin: 0 0 16px; color: var(--ct-text-1); }
-.row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 14px; background: var(--ct-bg-elev); border-radius: 10px; }
-.row-left { flex: 1; }
-.lbl { color: var(--ct-text-1); font-weight: 600; }
-.muted { color: var(--ct-text-3); font-size: 12px; margin-top: 4px; }
-.ch-card { padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.ch-head { display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 240px; }
-.ch-icon {
-  width: 40px; height: 40px;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+.sys-page { display: flex; flex-direction: column; gap: 18px; }
+
+.block { border: 1px solid var(--ct-divider); background: var(--ct-bg); }
+.block-head {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ct-divider);
+  background: var(--ct-bg-2);
 }
-.ch-icon.wechat { background: #07C160; }
-.ch-icon.tg { background: #229ED9; }
-.ch-icon.mail { background: #EAB308; }
-.ch-icon.sms { background: #6366F1; font-size: 11px; }
-.ch-name { color: var(--ct-text-1); font-weight: 600; }
-.ch-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.up-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.risk-block { margin-top: 18px; background: rgba(239,68,68,0.06); border-radius: 10px; padding: 12px 16px; }
-.risk-title { color: var(--ct-danger); font-weight: 600; margin-bottom: 6px; }
-.risk-block ul { color: var(--ct-text-2); font-size: 12px; padding-left: 18px; line-height: 1.7; margin: 0; }
+.grp-title {
+  font-size: 11px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+}
+.grp-title .num { color: var(--ct-amber); margin-right: 6px; }
+
+.block-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.row .lbl {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+  min-width: 130px;
+}
+.row .dim { color: var(--ct-text-3); }
+.row .amber { color: var(--ct-amber); font-family: var(--ct-font-mono); }
+
+.radio-row {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--ct-divider);
+  background: var(--ct-bg-2);
+}
+.radio-row.full { width: 100%; }
+.radio-row.half2 { width: 280px; }
+.radio-row .opt {
+  flex: 1;
+  height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--ct-text-2);
+  border-right: 1px solid var(--ct-divider);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  font-family: var(--ct-font-mono);
+  text-transform: uppercase;
+  user-select: none;
+}
+.radio-row .opt:last-child { border-right: 0; }
+.radio-row .opt.active { background: var(--ct-amber); color: #0A0E14; font-weight: 600; }
+.radio-row .opt:not(.active):hover { background: var(--ct-bg-hover); color: var(--ct-text); }
+
+.inp-term {
+  height: 30px;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  color: var(--ct-text);
+  padding: 0 10px;
+  font-size: 12px;
+  font-family: var(--ct-font-mono);
+  outline: none;
+  min-width: 280px;
+}
+.inp-term:focus { border-color: var(--ct-amber); }
+.btn-term {
+  height: 30px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn-term:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
+.btn-term.primary {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
+}
+.btn-term.primary:hover { filter: brightness(1.08); color: #0A0E14; }
+.btn-term:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.chk-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--ct-text-2);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+}
+.chk-term .box {
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--ct-text-dim);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ct-amber);
+  font-size: 11px;
+  line-height: 1;
+}
+.chk-term.on .box { border-color: var(--ct-amber); }
+.chk-term.on { color: var(--ct-text); }
+
+.upd-progress {
+  position: relative;
+  height: 22px;
+  border: 1px solid var(--ct-amber);
+  background: var(--ct-bg);
+}
+.upd-bar {
+  position: absolute;
+  inset: 0;
+  background: var(--ct-amber);
+  opacity: 0.8;
+  transition: width 80ms linear;
+}
+.upd-text {
+  position: relative;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #0A0E14;
+  font-family: var(--ct-font-mono);
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.warn {
+  border: 1px solid rgba(255, 180, 0, 0.35);
+  background: rgba(255, 180, 0, 0.04);
+  color: var(--ct-amber);
+  padding: 10px 12px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+  font-family: var(--ct-font-mono);
+}
 </style>

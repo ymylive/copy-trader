@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
+import { formatNum, formatSigned, formatPctSigned } from '@/utils/format'
 
 interface Position {
   id: number
@@ -21,82 +22,162 @@ interface Position {
 defineProps<{ data: Position[] }>()
 const emit = defineEmits<{ (e: 'close-all'): void }>()
 
-function num(v: number) {
-  return v.toLocaleString('en', { maximumFractionDigits: 4 })
-}
-
 function closeOne(p: Position) {
-  ElMessage.success(`已提交 ${p.symbol} 平仓单（mock）`)
+  ElMessage.success(`SUBMITTED ${p.symbol} CLOSE`)
 }
 </script>
 
 <template>
-  <el-table :data="data" empty-text="暂无数据" stripe>
-    <el-table-column label="多 / 空" width="80">
-      <template #default="{ row }">
-        <span :class="row.side === 'long' ? 'ct-pos' : 'ct-neg'" class="dir-tag">
-          {{ row.side === 'long' ? '多' : '空' }}
-        </span>
-      </template>
-    </el-table-column>
-    <el-table-column label="交易对" prop="symbol" />
-    <el-table-column label="数量" align="right">
-      <template #default="{ row }"><span class="mono">{{ num(row.qty) }}</span></template>
-    </el-table-column>
-    <el-table-column label="开仓均价" align="right">
-      <template #default="{ row }"><span class="mono">{{ num(row.entry) }}</span></template>
-    </el-table-column>
-    <el-table-column label="标记价格" align="right">
-      <template #default="{ row }"><span class="mono">{{ num(row.mark) }}</span></template>
-    </el-table-column>
-    <el-table-column label="强平价格" align="right">
-      <template #default="{ row }"><span class="mono">{{ num(row.liq) }}</span></template>
-    </el-table-column>
-    <el-table-column label="保证金" align="right">
-      <template #default="{ row }"><span class="mono">{{ num(row.margin) }}</span></template>
-    </el-table-column>
-    <el-table-column label="保证金率" align="right">
-      <template #default="{ row }"><span class="mono">{{ row.margin_rate.toFixed(2) }}%</span></template>
-    </el-table-column>
-    <el-table-column label="已实现盈亏" align="right">
-      <template #default="{ row }">
-        <span class="mono" :class="row.realized_pnl >= 0 ? 'ct-pos' : 'ct-neg'">
-          {{ row.realized_pnl >= 0 ? '+' : '' }}{{ num(row.realized_pnl) }}
-        </span>
-      </template>
-    </el-table-column>
-    <el-table-column label="盈亏及回报率" align="right">
-      <template #default="{ row }">
-        <span class="mono" :class="row.unrealized_pnl >= 0 ? 'ct-pos' : 'ct-neg'">
-          {{ row.unrealized_pnl >= 0 ? '+' : '' }}{{ num(row.unrealized_pnl) }}
-        </span>
-        <div class="pct mono" :class="row.pnl_pct >= 0 ? 'ct-pos' : 'ct-neg'">
-          ({{ row.pnl_pct >= 0 ? '+' : '' }}{{ row.pnl_pct.toFixed(2) }}%)
-        </div>
-      </template>
-    </el-table-column>
-    <el-table-column label="止盈 / 止损" width="120">
-      <template #default="{ row }">{{ row.tp }} / {{ row.sl }}</template>
-    </el-table-column>
-    <el-table-column label="操作" width="140" fixed="right">
-      <template #default="{ row }">
-        <el-button text type="primary" size="small">新增跟平订单</el-button>
-        <el-button text type="danger" size="small" @click="closeOne(row)">平仓</el-button>
-      </template>
-    </el-table-column>
-  </el-table>
+  <div class="pos-wrap">
+    <div class="pos-head">
+      <span class="label">POSITIONS · {{ data.length }} OPEN</span>
+      <el-popconfirm
+        title="CONFIRM CLOSE ALL POSITIONS?"
+        confirm-button-text="EXECUTE"
+        cancel-button-text="ABORT"
+        @confirm="emit('close-all')"
+      >
+        <template #reference>
+          <button class="btn-flat-amber" :disabled="!data.length">
+            ▌ CLOSE ALL
+          </button>
+        </template>
+      </el-popconfirm>
+    </div>
 
-  <div class="footer-bar">
-    <el-popconfirm title="确认一键全平所有持仓？" @confirm="emit('close-all')">
-      <template #reference>
-        <el-button type="primary" :disabled="!data.length">一键全平</el-button>
-      </template>
-    </el-popconfirm>
+    <table class="pos-table">
+      <thead>
+        <tr>
+          <th>SIDE</th>
+          <th>SYMBOL</th>
+          <th class="r">QTY</th>
+          <th class="r">ENTRY</th>
+          <th class="r">MARK</th>
+          <th class="r">LIQ</th>
+          <th class="r">MARGIN</th>
+          <th class="r">MMR%</th>
+          <th class="r">REALIZED</th>
+          <th class="r">UNREALIZED</th>
+          <th class="r">PNL%</th>
+          <th>TP / SL</th>
+          <th class="r">OPS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-if="!data.length">
+          <td colspan="13" class="empty">— NO OPEN POSITIONS —</td>
+        </tr>
+        <tr v-for="row in data" :key="row.id">
+          <td>
+            <span class="side" :class="row.side === 'long' ? 'pos' : 'neg'">
+              {{ row.side === 'long' ? 'LONG' : 'SHORT' }}
+            </span>
+          </td>
+          <td>{{ row.symbol }}</td>
+          <td class="r num">{{ formatNum(row.qty, 4) }}</td>
+          <td class="r num">{{ formatNum(row.entry, 2) }}</td>
+          <td class="r num">{{ formatNum(row.mark, 2) }}</td>
+          <td class="r num">{{ formatNum(row.liq, 2) }}</td>
+          <td class="r num">{{ formatNum(row.margin, 2) }}</td>
+          <td class="r num">{{ formatNum(row.margin_rate, 2) }}%</td>
+          <td class="r num" :class="row.realized_pnl >= 0 ? 'pos' : 'neg'">
+            {{ row.realized_pnl === 0 ? '0.00' : formatSigned(row.realized_pnl, 2) }}
+          </td>
+          <td class="r num" :class="row.unrealized_pnl >= 0 ? 'pos' : 'neg'">
+            {{ formatSigned(row.unrealized_pnl, 2) }}
+          </td>
+          <td class="r num" :class="row.pnl_pct >= 0 ? 'pos' : 'neg'">
+            {{ formatPctSigned(row.pnl_pct, 2) }}
+          </td>
+          <td>{{ row.tp }} / {{ row.sl }}</td>
+          <td class="r ops">
+            <button class="link" @click="closeOne(row)">CLOSE</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
 <style scoped>
-.dir-tag { font-weight: 700; }
-.pct { font-size: 11px; }
-.footer-bar { display: flex; justify-content: flex-end; padding: 12px 0; }
+.pos-wrap {
+  border: 1px solid var(--ct-divider);
+  background: var(--ct-bg);
+}
+.pos-head {
+  height: 36px;
+  padding: 0 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--ct-divider);
+}
+.pos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ct-font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pos-table th,
+.pos-table td {
+  height: 28px;
+  padding: 0 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--ct-divider);
+  white-space: nowrap;
+}
+.pos-table th {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  background: var(--ct-bg-2);
+}
+.pos-table .r { text-align: right; }
+.pos-table tbody tr:hover { background: var(--ct-bg-hover); }
+.pos-table .num { font-variant-numeric: tabular-nums; }
+.pos-table .pos { color: var(--ct-pos); }
+.pos-table .neg { color: var(--ct-neg); }
+.side {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+.pos-table .empty {
+  text-align: center;
+  color: var(--ct-text-3);
+  padding: 40px 0;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.btn-flat-amber {
+  background: var(--ct-amber);
+  color: #0A0E14;
+  border: 1px solid var(--ct-amber);
+  height: 28px;
+  padding: 0 14px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--ct-font-mono);
+}
+.btn-flat-amber:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-flat-amber:disabled { opacity: 0.4; cursor: not-allowed; }
+.link {
+  background: transparent;
+  border: 0;
+  color: var(--ct-neg);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: var(--ct-font-mono);
+}
+.link:hover { color: var(--ct-amber); }
+.ops { padding-right: 12px; }
 </style>

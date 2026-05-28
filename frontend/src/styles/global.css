@@ -1,6 +1,11 @@
 @import './tokens.css';
+@import './terminal.css';
+@import './element-overrides.css';
 
-*,
+* {
+  box-sizing: border-box;
+}
+
 *::before,
 *::after {
   box-sizing: border-box;
@@ -14,92 +19,95 @@ body,
   padding: 0;
 }
 
+html {
+  background: var(--ct-bg);
+  color: var(--ct-text);
+}
+
 body {
-  font-family: var(--ct-font-sans);
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--ct-text-1);
+  font-family: var(--ct-font-mono);
+  font-feature-settings: 'tnum' 1, 'cv02' 1, 'cv03' 1, 'cv04' 1;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ct-text);
   background: var(--ct-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0;
 }
 
 a {
-  color: var(--ct-primary);
+  color: var(--ct-amber);
   text-decoration: none;
 }
+a:hover { filter: brightness(1.15); }
 
+/* radius normalisation: 0 everywhere */
+button,
+input,
+select,
+textarea,
+.el-button,
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: 0 !important;
+  font-family: var(--ct-font-mono) !important;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--ct-font-mono);
+}
+
+/* tnum aliases */
 .ct-mono,
 .mono,
 .num {
   font-family: var(--ct-font-mono);
-  font-feature-settings: 'tnum';
+  font-feature-settings: 'tnum' 1;
   font-variant-numeric: tabular-nums;
 }
 
+/* generic colour helpers */
+.ct-pos, .num.pos, .pos { color: var(--ct-pos); }
+.ct-neg, .num.neg, .neg { color: var(--ct-neg); }
+.ct-mute, .dim { color: var(--ct-text-3); }
+.ct-amber, .amber { color: var(--ct-amber); }
+
+/* card / surface */
 .ct-card {
-  background: var(--ct-bg-card);
-  border-radius: var(--ct-r-lg);
-  border: 1px solid var(--ct-border);
-  box-shadow: var(--ct-shadow-sm);
-}
-
-.ct-pos { color: var(--ct-primary); }
-.ct-neg { color: var(--ct-danger); }
-.ct-mute { color: var(--ct-text-3); }
-
-.ct-grad-emerald {
-  background: linear-gradient(135deg, #10B981 0%, #0D9488 100%);
-  color: #fff;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  border-radius: 0;
 }
 
 .ct-section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ct-text-1);
-  margin: 0 0 var(--ct-sp-4);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 var(--ct-sp-3);
 }
 
-/* Space (dark) for public marketing pages */
+/* dark space helpers (back-compat, mapped to terminal) */
 .ct-space {
-  background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(16, 185, 129, 0.12), transparent 60%),
-    radial-gradient(800px 400px at 10% 110%, rgba(56, 189, 248, 0.08), transparent 60%),
-    var(--ct-space-bg);
-  color: var(--ct-space-text);
+  background: var(--ct-bg);
+  color: var(--ct-text);
   min-height: 100%;
+  position: relative;
 }
+.ct-space-stars::before { display: none; }
 
-.ct-space-stars::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1px 1px at 70% 80%, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(1px 1px at 40% 70%, rgba(255, 255, 255, 0.4), transparent),
-    radial-gradient(1px 1px at 85% 20%, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(1px 1px at 10% 60%, rgba(255, 255, 255, 0.4), transparent);
-  pointer-events: none;
-  z-index: 0;
-}
+/* scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--ct-bg); }
+::-webkit-scrollbar-thumb { background: var(--ct-divider-strong); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--ct-border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-
-/* Element Plus tweaks */
-.el-card { border-radius: var(--ct-r-lg) !important; }
-.el-button--primary {
-  --el-button-bg-color: var(--ct-primary);
-  --el-button-border-color: var(--ct-primary);
-  --el-button-hover-bg-color: var(--ct-primary-600);
-  --el-button-hover-border-color: var(--ct-primary-600);
-}
-
-/* Responsive helpers */
+/* responsive helpers */
 @media (max-width: 768px) {
   .hide-sm { display: none !important; }
 }

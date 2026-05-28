@@ -10,7 +10,6 @@ interface Props {
   accountId?: number
   reverse?: boolean
 }
-
 const props = withDefaults(defineProps<Props>(), { reverse: false, accountId: undefined })
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
@@ -28,25 +27,25 @@ function defaultForm(): CopyConfig {
     trader_id: props.trader?.id ?? '',
     reverse: !!props.reverse,
     capital_mode: 'fixed',
-    fixed_amount: 200,
+    fixed_amount: 500,
     multiplier: 1,
-    start_mode: 'none',
+    start_mode: 'only_loss',
     direction: 'both',
     open_trigger: 'market',
-    open_price_better_pct: 0,
-    add_trigger: 'market',
-    add_price_better_pct: 0,
-    tp_mode: 'off',
-    tp_close_pct: 100,
-    sl_mode: 'off',
+    open_price_better_pct: 0.05,
+    add_trigger: 'avg_price',
+    add_price_better_pct: 0.10,
+    tp_mode: 'cycle',
+    tp_close_pct: 30,
+    sl_mode: 'cycle',
     sl_close_pct: 100,
-    loss_threshold_usdt: 500,
-    safety_floor: 1,
-    refill_on_tp: false,
-    refill_allow_retp: false,
-    blacklist: [],
-    whitelist: [],
-    notify_channels: ['none'],
+    loss_threshold_usdt: 2000,
+    safety_floor: 3.5,
+    refill_on_tp: true,
+    refill_allow_retp: true,
+    blacklist: ['DOGE', 'SHIB', 'PEPE'],
+    whitelist: ['BTC', 'ETH', 'SOL', 'BNB'],
+    notify_channels: ['telegram'],
     notify_types: ['order_success', 'order_fail', 'risk_trigger', 'tp_sl']
   }
 }
@@ -54,7 +53,6 @@ function defaultForm(): CopyConfig {
 const form = reactive<CopyConfig>(defaultForm())
 const blacklistInput = ref('')
 const whitelistInput = ref('')
-const activeCollapse = ref(['capital', 'basic', 'risk', 'symbols', 'notify'])
 
 watch(
   () => props.modelValue,
@@ -68,25 +66,46 @@ watch(
 )
 
 const submitting = ref(false)
+const cfgHash = computed(() => {
+  // pseudo-hash for cosmetic display
+  const seed = (props.trader?.id || '') + form.capital_mode + form.fixed_amount + form.multiplier
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h + seed.charCodeAt(i)) | 0
+  const hex = (h >>> 0).toString(16).toUpperCase().padStart(8, '0')
+  return `0x${hex.slice(0, 4)}.${hex.slice(4, 8)}`
+})
+
+function toggleArr(arr: string[], v: string) {
+  const i = arr.indexOf(v)
+  if (i >= 0) arr.splice(i, 1)
+  else arr.push(v)
+}
+
+function removeChip(arr: string[], v: string) {
+  const i = arr.indexOf(v)
+  if (i >= 0) arr.splice(i, 1)
+}
+
+function addBlack() {
+  const v = blacklistInput.value.trim().toUpperCase()
+  if (v && !form.blacklist.includes(v)) form.blacklist.push(v)
+  blacklistInput.value = ''
+}
+function addWhite() {
+  const v = whitelistInput.value.trim().toUpperCase()
+  if (v && !form.whitelist.includes(v)) form.whitelist.push(v)
+  whitelistInput.value = ''
+}
 
 async function submit() {
   if (form.capital_mode === 'fixed' && (!form.fixed_amount || form.fixed_amount <= 0)) {
-    ElMessage.warning('请填写固定金额')
+    ElMessage.warning('FIXED AMOUNT REQUIRED')
     return
   }
-  form.blacklist = blacklistInput.value
-    .split(/[,，\s]+/)
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean)
-  form.whitelist = whitelistInput.value
-    .split(/[,，\s]+/)
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean)
-
   submitting.value = true
   try {
     await copyConfigsApi.create(form)
-    ElMessage.success('跟单已启动')
+    ElMessage.success('COPY JOB STARTED')
     emit('submitted', { ...form })
     open.value = false
   } finally {
@@ -94,263 +113,604 @@ async function submit() {
   }
 }
 
-const titleStyle = computed(() => (props.reverse ? 'reverse' : 'normal'))
+const notifyChannel = computed({
+  get: () => form.notify_channels[0] || 'none',
+  set: (v: string) => { form.notify_channels = [v] }
+})
 </script>
 
 <template>
   <el-dialog
     v-model="open"
-    :title="''"
-    width="780px"
+    :show-close="false"
+    width="940px"
     :close-on-click-modal="false"
     append-to-body
-    class="copy-dialog"
+    align-center
+    class="cfg-modal"
   >
     <template #header>
-      <div class="dialog-head">
-        <div class="head-tags">
-          <span class="tag standard">标准</span>
-          <span class="trader-name">{{ trader?.nickname }}</span>
-          <span class="trader-id mono">ID: {{ trader?.id }}</span>
-          <span class="tag" :class="titleStyle">{{ reverse ? '反向跟单' : '正向跟单' }}</span>
-          <span class="tag config">配置1</span>
+      <div class="modal-head">
+        <div class="left">
+          <span>TASK CONFIG</span>
+          <span class="dim">·</span>
+          <span>TRADER <span class="amber">{{ trader?.exchange?.toUpperCase() }}:{{ trader?.id }} / {{ trader?.nickname }}</span></span>
+          <span class="dim">·</span>
+          <span>CFG_{{ reverse ? '02 · INVERSE' : '01' }}</span>
         </div>
-        <a class="risk-link">风控设置 ›</a>
+        <div class="right">
+          <span class="badge green"><span class="dot"></span>DRAFT</span>
+          <span class="x" @click="open = false">[ X ]</span>
+        </div>
       </div>
     </template>
 
-    <el-collapse v-model="activeCollapse" class="cfg-collapse">
-      <!-- 资金管理模式 -->
-      <el-collapse-item title="① 资金管理模式" name="capital">
-        <el-radio-group v-model="form.capital_mode" class="cap-group">
-          <el-radio value="fixed">
-            <div class="opt-line">
-              <b>固定金额</b>
-              <span class="desc">按固定 USDT 金额跟单</span>
+    <div class="modal-body">
+
+      <!-- GROUP 01 · CAPITAL MODE -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">01</span>CAPITAL MODE</div>
+          <div class="grp-desc">how follower capital is allocated against each signal.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">MODE <span class="req">*</span></div>
+            <div class="val full">
+              <div class="radio-row full">
+                <div class="opt" :class="{ active: form.capital_mode === 'fixed' }" @click="form.capital_mode = 'fixed'">FIXED AMOUNT</div>
+                <div class="opt" :class="{ active: form.capital_mode === 'full' }" @click="form.capital_mode = 'full'">FULL-MARGIN MIRROR</div>
+                <div class="opt" :class="{ active: form.capital_mode === 'compound' }" @click="form.capital_mode = 'compound'">COMPOUND ROLL</div>
+              </div>
             </div>
-          </el-radio>
-          <el-radio value="full">
-            <div class="opt-line">
-              <b>全仓跟单</b>
-              <span class="desc">以账户全部可用资金为基数计算仓位</span>
+          </div>
+          <div v-if="form.capital_mode === 'fixed'" class="form-row">
+            <div class="lbl">FIXED AMOUNT PER ORDER</div>
+            <div class="val">
+              <span class="inp-grp">
+                <input class="inp-term num" type="number" v-model.number="form.fixed_amount" />
+                <span class="suffix-term">USDT</span>
+              </span>
+              <span class="dim">· MIN 50  MAX 10 000</span>
             </div>
-          </el-radio>
-          <el-radio value="compound">
-            <div class="opt-line">
-              <b>复利滚动</b>
-              <span class="desc">以当前账户总资产为基数，实时计算仓位</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP 02 · BASIC SETTINGS -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">02</span>BASIC SETTINGS</div>
+          <div class="grp-desc">multiplier, replication scope, direction limit, open / add triggers.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">COPY MULTIPLIER</div>
+            <div class="val">
+              <span class="inp-grp">
+                <input class="inp-term num" type="number" step="0.1" v-model.number="form.multiplier" />
+                <span class="suffix-term">× LEVERAGE</span>
+              </span>
             </div>
-          </el-radio>
-        </el-radio-group>
-
-        <el-form-item v-if="form.capital_mode === 'fixed'" label="固定金额 (USDT)" class="mt-12">
-          <el-input-number v-model="form.fixed_amount" :min="10" :max="1000000" :step="10" />
-        </el-form-item>
-      </el-collapse-item>
-
-      <!-- 基础设置 -->
-      <el-collapse-item title="② 基础设置" name="basic">
-        <el-form label-width="160px" label-position="right">
-          <el-form-item label="跟单倍率">
-            <el-input-number v-model="form.multiplier" :min="0.01" :max="100" :step="0.1" :precision="2" />
-            <span class="help-text">与交易员仓位百分比的乘数（1 = 与交易员相同百分比）</span>
-          </el-form-item>
-
-          <el-form-item label="启动跟单设置">
-            <el-radio-group v-model="form.start_mode">
-              <el-radio value="none">不复制</el-radio>
-              <el-radio value="only_loss">仅复制浮亏持仓</el-radio>
-              <el-radio value="all">复制所有持仓</el-radio>
-            </el-radio-group>
-          </el-form-item>
-
-          <el-form-item label="持仓方向限制">
-            <el-radio-group v-model="form.direction">
-              <el-radio value="both">无限制</el-radio>
-              <el-radio value="long">只开多单</el-radio>
-              <el-radio value="short">只开空单</el-radio>
-            </el-radio-group>
-          </el-form-item>
-
-          <el-form-item label="开仓触发条件">
-            <el-radio-group v-model="form.open_trigger">
-              <el-radio value="market">市价</el-radio>
-              <el-radio value="avg_price">持仓均价限价</el-radio>
-              <el-radio value="add_price">加仓价限价</el-radio>
-            </el-radio-group>
-            <div class="sub-row" v-if="form.open_trigger !== 'market'">
-              <span class="lbl">价格优于交易员：</span>
-              <el-input-number v-model="form.open_price_better_pct" :min="0" :max="50" :step="0.1" :precision="2" />
-              <span class="lbl">%</span>
+          </div>
+          <div class="form-row">
+            <div class="lbl">START-UP REPLICATION</div>
+            <div class="val full">
+              <div class="radio-row full">
+                <div class="opt" :class="{ active: form.start_mode === 'none' }" @click="form.start_mode = 'none'">NO COPY EXISTING</div>
+                <div class="opt" :class="{ active: form.start_mode === 'only_loss' }" @click="form.start_mode = 'only_loss'">COPY UNREALIZED LOSS ONLY</div>
+                <div class="opt" :class="{ active: form.start_mode === 'all' }" @click="form.start_mode = 'all'">COPY ALL POSITIONS</div>
+              </div>
             </div>
-          </el-form-item>
-
-          <el-form-item label="加仓触发条件">
-            <el-radio-group v-model="form.add_trigger">
-              <el-radio value="market">市价</el-radio>
-              <el-radio value="avg_price">持仓均价限价</el-radio>
-              <el-radio value="add_price">加仓价限价</el-radio>
-            </el-radio-group>
-            <div class="sub-row" v-if="form.add_trigger !== 'market'">
-              <span class="lbl">价格优于交易员：</span>
-              <el-input-number v-model="form.add_price_better_pct" :min="0" :max="50" :step="0.1" :precision="2" />
-              <span class="lbl">%</span>
+          </div>
+          <div class="form-row">
+            <div class="lbl">DIRECTION LIMIT</div>
+            <div class="val full">
+              <div class="radio-row full">
+                <div class="opt" :class="{ active: form.direction === 'both' }" @click="form.direction = 'both'">NO LIMIT</div>
+                <div class="opt" :class="{ active: form.direction === 'long' }" @click="form.direction = 'long'">LONG ONLY</div>
+                <div class="opt" :class="{ active: form.direction === 'short' }" @click="form.direction = 'short'">SHORT ONLY</div>
+              </div>
             </div>
-          </el-form-item>
-        </el-form>
-      </el-collapse-item>
-
-      <!-- 止盈止损 -->
-      <el-collapse-item title="③ 止盈止损 / 风控" name="risk">
-        <el-form label-width="160px" label-position="right">
-          <el-form-item label="持仓止盈">
-            <el-radio-group v-model="form.tp_mode">
-              <el-radio value="off">不启用</el-radio>
-              <el-radio value="cycle">循环触发</el-radio>
-            </el-radio-group>
-            <div class="sub-row" v-if="form.tp_mode === 'cycle'">
-              <span class="lbl">平仓数量：</span>
-              <el-input-number v-model="form.tp_close_pct" :min="1" :max="100" :step="5" />
-              <span class="lbl">%</span>
+          </div>
+          <div class="form-row">
+            <div class="lbl">OPEN TRIGGER · PRICE</div>
+            <div class="val full inline">
+              <div class="radio-row half">
+                <div class="opt" :class="{ active: form.open_trigger === 'market' }" @click="form.open_trigger = 'market'">MARKET</div>
+                <div class="opt" :class="{ active: form.open_trigger === 'avg_price' }" @click="form.open_trigger = 'avg_price'">LIMIT @ AVG</div>
+                <div class="opt" :class="{ active: form.open_trigger === 'add_price' }" @click="form.open_trigger = 'add_price'">LIMIT @ LAST-ADD</div>
+              </div>
+              <span class="dim">·</span>
+              <span class="inp-grp">
+                <input class="inp-term num" type="number" step="0.01" v-model.number="form.open_price_better_pct" />
+                <span class="suffix-term">% BETTER</span>
+              </span>
             </div>
-          </el-form-item>
-
-          <el-form-item label="持仓止损">
-            <el-radio-group v-model="form.sl_mode">
-              <el-radio value="off">不启用</el-radio>
-              <el-radio value="cycle">循环触发</el-radio>
-            </el-radio-group>
-            <div class="sub-row" v-if="form.sl_mode === 'cycle'">
-              <span class="lbl">平仓数量：</span>
-              <el-input-number v-model="form.sl_close_pct" :min="1" :max="100" :step="5" />
-              <span class="lbl">%</span>
+          </div>
+          <div class="form-row">
+            <div class="lbl">ADD-ON TRIGGER · PRICE</div>
+            <div class="val full inline">
+              <div class="radio-row half">
+                <div class="opt" :class="{ active: form.add_trigger === 'market' }" @click="form.add_trigger = 'market'">MARKET</div>
+                <div class="opt" :class="{ active: form.add_trigger === 'avg_price' }" @click="form.add_trigger = 'avg_price'">LIMIT @ AVG</div>
+                <div class="opt" :class="{ active: form.add_trigger === 'add_price' }" @click="form.add_trigger = 'add_price'">LIMIT @ LAST-ADD</div>
+              </div>
+              <span class="dim">·</span>
+              <span class="inp-grp">
+                <input class="inp-term num" type="number" step="0.01" v-model.number="form.add_price_better_pct" />
+                <span class="suffix-term">% BETTER</span>
+              </span>
             </div>
-          </el-form-item>
+          </div>
+        </div>
+      </div>
 
-          <el-form-item label="跟单亏损阈值">
-            <el-input-number v-model="form.loss_threshold_usdt" :min="10" :step="50" />
-            <span class="lbl">USDT</span>
-            <span class="help-text">达到阈值时暂停此交易员的跟单并全平来自此交易员的持仓</span>
-          </el-form-item>
+      <!-- GROUP 03 · TP/SL + RISK -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">03</span>TAKE-PROFIT / STOP-LOSS</div>
+          <div class="grp-desc">per-position and per-job risk envelope.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">POSITION TAKE-PROFIT</div>
+            <div class="val full inline">
+              <div class="radio-row half2">
+                <div class="opt" :class="{ active: form.tp_mode === 'off' }" @click="form.tp_mode = 'off'">DISABLED</div>
+                <div class="opt" :class="{ active: form.tp_mode === 'cycle' }" @click="form.tp_mode = 'cycle'">CYCLIC TRIGGER</div>
+              </div>
+              <span class="dim">CLOSE</span>
+              <span class="inp-grp">
+                <input class="inp-term num" type="number" v-model.number="form.tp_close_pct" />
+                <span class="suffix-term">% OF QTY</span>
+              </span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">POSITION STOP-LOSS</div>
+            <div class="val full inline">
+              <div class="radio-row half2">
+                <div class="opt" :class="{ active: form.sl_mode === 'off' }" @click="form.sl_mode = 'off'">DISABLED</div>
+                <div class="opt" :class="{ active: form.sl_mode === 'cycle' }" @click="form.sl_mode = 'cycle'">CYCLIC TRIGGER</div>
+              </div>
+              <span class="dim">CLOSE</span>
+              <span class="inp-grp">
+                <input class="inp-term num" type="number" v-model.number="form.sl_close_pct" />
+                <span class="suffix-term">% OF QTY</span>
+              </span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">JOB LOSS THRESHOLD · USDT (ABS)</div>
+            <div class="val">
+              <span class="inp-grp">
+                <input class="inp-term num" type="number" v-model.number="form.loss_threshold_usdt" />
+                <span class="suffix-term">USDT</span>
+              </span>
+              <span class="dim">· AUTO-PAUSE WHEN BREACHED</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">SAFETY-CUSHION LOSS · MULT</div>
+            <div class="val">
+              <span class="inp-grp">
+                <input class="inp-term num" type="number" step="0.1" v-model.number="form.safety_floor" />
+                <span class="suffix-term">× LEADER MM</span>
+              </span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">POST-TP REFILL</div>
+            <div class="val">
+              <label class="chk-term" :class="{ on: form.refill_on_tp }" @click="form.refill_on_tp = !form.refill_on_tp">
+                <span class="box">{{ form.refill_on_tp ? '✓' : '' }}</span>
+                RE-FILL POSITION WHEN PRICE RETURNS TO AVG
+              </label>
+              <label class="chk-term" :class="{ on: form.refill_allow_retp }" @click="form.refill_allow_retp = !form.refill_allow_retp">
+                <span class="box">{{ form.refill_allow_retp ? '✓' : '' }}</span>
+                ALLOW SECOND TP AFTER RE-FILL
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <el-form-item label="安全垫亏损值">
-            <el-input-number v-model="form.safety_floor" :min="0.1" :max="10" :step="0.1" :precision="2" />
-            <span class="lbl">×</span>
-            <span class="help-text">净值跌破预设值时自动触发倍率降低，防止进一步亏损</span>
-          </el-form-item>
+      <!-- GROUP 04 · SYMBOL FILTER -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">04</span>SYMBOL FILTER</div>
+          <div class="grp-desc">leave empty to follow leader fully.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">BLACKLIST</div>
+            <div class="val full">
+              <div class="chip-input full">
+                <span v-for="s in form.blacklist" :key="'b'+s" class="chip-term">
+                  {{ s }}
+                  <span class="x" @click="removeChip(form.blacklist, s)">×</span>
+                </span>
+                <input
+                  v-model="blacklistInput"
+                  placeholder="+ ADD SYMBOL"
+                  @keyup.enter="addBlack"
+                  @blur="addBlack"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">WHITELIST</div>
+            <div class="val full">
+              <div class="chip-input full">
+                <span v-for="s in form.whitelist" :key="'w'+s" class="chip-term">
+                  {{ s }}
+                  <span class="x" @click="removeChip(form.whitelist, s)">×</span>
+                </span>
+                <input
+                  v-model="whitelistInput"
+                  placeholder="+ ADD SYMBOL"
+                  @keyup.enter="addWhite"
+                  @blur="addWhite"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <el-form-item label="止盈回填策略">
-            <el-checkbox v-model="form.refill_on_tp">触发止盈后市场价格回到开仓均价时重新补满仓位</el-checkbox>
-            <el-checkbox v-model="form.refill_allow_retp">补满仓位后允许再次止盈</el-checkbox>
-          </el-form-item>
-        </el-form>
-      </el-collapse-item>
+      <!-- GROUP 05 · NOTIFICATIONS -->
+      <div class="form-grp">
+        <div>
+          <div class="grp-title"><span class="num">05</span>NOTIFICATIONS</div>
+          <div class="grp-desc">delivery channel + event subscriptions.</div>
+        </div>
+        <div class="form-rows">
+          <div class="form-row">
+            <div class="lbl">DELIVERY CHANNEL</div>
+            <div class="val full">
+              <div class="radio-row half">
+                <div class="opt" :class="{ active: notifyChannel === 'none' }" @click="notifyChannel = 'none'">SILENT</div>
+                <div class="opt" :class="{ active: notifyChannel === 'email' }" @click="notifyChannel = 'email'">EMAIL</div>
+                <div class="opt" :class="{ active: notifyChannel === 'telegram' }" @click="notifyChannel = 'telegram'">TELEGRAM BOT</div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">EVENT SUBSCRIPTIONS</div>
+            <div class="val">
+              <div class="chk-row">
+                <label
+                  v-for="ev in [
+                    { v: 'order_success', l: 'ORDER FILLED' },
+                    { v: 'order_fail', l: 'ORDER REJECTED' },
+                    { v: 'risk_trigger', l: 'RISK TRIGGER' },
+                    { v: 'tp_sl', l: 'TP / SL HIT' },
+                    { v: 'margin_change', l: 'LEADER MARGIN CHG' }
+                  ]"
+                  :key="ev.v"
+                  class="chk-term"
+                  :class="{ on: form.notify_types.includes(ev.v) }"
+                  @click="toggleArr(form.notify_types, ev.v)"
+                >
+                  <span class="box">{{ form.notify_types.includes(ev.v) ? '✓' : '' }}</span>
+                  {{ ev.l }}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <!-- 币种过滤 -->
-      <el-collapse-item title="④ 币种过滤" name="symbols">
-        <el-form label-width="160px" label-position="right">
-          <el-form-item label="币种黑名单">
-            <el-input
-              v-model="blacklistInput"
-              type="textarea"
-              :rows="2"
-              placeholder="不跟单的币种，逗号分隔（如：DOGE, SHIB, PEPE）"
-            />
-          </el-form-item>
-          <el-form-item label="只跟单的币种">
-            <el-input
-              v-model="whitelistInput"
-              type="textarea"
-              :rows="2"
-              placeholder="白名单，留空表示不限制（如：BTC, ETH, SOL）"
-            />
-          </el-form-item>
-        </el-form>
-      </el-collapse-item>
-
-      <!-- 通知设置 -->
-      <el-collapse-item title="⑤ 通知设置" name="notify">
-        <el-form label-width="160px" label-position="right">
-          <el-form-item label="通知方式">
-            <el-radio-group v-model="form.notify_channels[0]">
-              <el-radio value="none">不通知</el-radio>
-              <el-radio value="email">邮件</el-radio>
-              <el-radio value="telegram">TG 机器人</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item label="通知类型">
-            <el-checkbox-group v-model="form.notify_types">
-              <el-checkbox value="order_success">下单成功</el-checkbox>
-              <el-checkbox value="order_fail">下单失败</el-checkbox>
-              <el-checkbox value="risk_trigger">触发风控</el-checkbox>
-              <el-checkbox value="tp_sl">止盈止损</el-checkbox>
-              <el-checkbox value="margin_change">交易员保证金变动 (仅币安)</el-checkbox>
-            </el-checkbox-group>
-          </el-form-item>
-        </el-form>
-      </el-collapse-item>
-    </el-collapse>
-
-    <div class="footer-tip">风控设置针对来自此交易员跟单任务下的所有配置生效</div>
+    </div>
 
     <template #footer>
-      <el-button @click="open = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="submit">
-        {{ reverse ? '启动反向跟单' : '启动跟单' }}
-      </el-button>
+      <div class="modal-foot">
+        <div class="lhs">CFG_HASH {{ cfgHash }} · DRY-RUN ENABLED · <span class="amber">VALIDATED ✓</span></div>
+        <div class="btns">
+          <button class="btn-term" @click="open = false">CANCEL</button>
+          <button class="btn-term primary" :disabled="submitting" @click="submit">
+            <span v-if="submitting">▌ SUBMITTING…</span>
+            <span v-else>START COPY →</span>
+          </button>
+        </div>
+      </div>
     </template>
   </el-dialog>
 </template>
 
 <style scoped>
-:deep(.copy-dialog .el-dialog__header) { padding: 16px 22px; border-bottom: 1px solid var(--ct-border); }
-:deep(.copy-dialog .el-dialog__body) { padding: 18px 22px; max-height: 70vh; overflow-y: auto; }
-.dialog-head { display: flex; justify-content: space-between; align-items: center; }
-.head-tags { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
+:deep(.cfg-modal) {
+  border: 1px solid var(--ct-divider) !important;
+  background: rgba(10, 14, 20, 0.96) !important;
+  border-radius: 0 !important;
+}
+:deep(.cfg-modal .el-dialog__header) {
+  padding: 0 !important;
+  border-bottom: 1px solid var(--ct-divider);
+  margin: 0 !important;
+}
+:deep(.cfg-modal .el-dialog__body) {
+  padding: 0 !important;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+:deep(.cfg-modal .el-dialog__footer) {
+  padding: 0 !important;
+  border-top: 1px solid var(--ct-divider);
+}
+
+.modal-head {
+  height: 38px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 11px;
-  font-weight: 600;
+  color: var(--ct-text-2);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
 }
-.tag.standard { background: rgba(16,185,129,0.12); color: var(--ct-primary); }
-.tag.normal { background: rgba(16,185,129,0.12); color: var(--ct-primary); }
-.tag.reverse { background: rgba(56,189,248,0.12); color: var(--ct-accent); }
-.tag.config { background: rgba(156,163,175,0.12); color: var(--ct-text-2); }
-.trader-name { font-size: 16px; font-weight: 600; color: var(--ct-text-1); }
-.trader-id { color: var(--ct-text-3); font-size: 12px; }
-.risk-link { color: var(--ct-primary); font-size: 13px; cursor: pointer; }
-.cfg-collapse { border: none; }
-:deep(.cfg-collapse .el-collapse-item__header) {
-  font-weight: 600;
+.modal-head .left,
+.modal-head .right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.modal-head .dim { color: var(--ct-text-dim); }
+.modal-head .amber { color: var(--ct-amber); }
+.modal-head .x {
   font-size: 14px;
-  background: var(--ct-bg-elev);
-  padding: 0 14px;
-  border-radius: 8px;
-  margin-top: 8px;
+  color: var(--ct-text-3);
+  cursor: pointer;
+  padding-left: 4px;
 }
-:deep(.cfg-collapse .el-collapse-item__wrap) { background: transparent; }
-:deep(.cfg-collapse .el-collapse-item__content) { padding: 16px 8px 6px; }
-.cap-group {
+.modal-head .x:hover { color: var(--ct-neg); }
+
+.modal-body { padding: 0; }
+
+.form-grp {
+  border-bottom: 1px solid var(--ct-divider);
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 18px;
+}
+.form-grp:last-child { border-bottom: 0; }
+.grp-title {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+}
+.grp-title .num {
+  color: var(--ct-amber);
+  margin-right: 6px;
+}
+.grp-desc {
+  font-size: 10px;
+  color: var(--ct-text-dim);
+  letter-spacing: 0.02em;
+  margin-top: 6px;
+  text-transform: none;
+  line-height: 1.5;
+}
+
+.form-rows {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 6px;
 }
-.cap-group :deep(.el-radio) { margin-right: 0; height: auto; padding: 6px 0; align-items: flex-start; }
-.opt-line { display: flex; flex-direction: column; gap: 2px; }
-.opt-line b { color: var(--ct-text-1); }
-.desc { color: var(--ct-text-3); font-size: 12px; }
-.mt-12 { margin-top: 12px; }
-.sub-row { display: inline-flex; align-items: center; gap: 8px; margin-left: 14px; }
-.lbl { color: var(--ct-text-2); font-size: 13px; }
-.help-text { margin-left: 10px; color: var(--ct-text-3); font-size: 12px; }
-.footer-tip {
-  margin-top: 14px;
-  padding: 10px 12px;
-  background: rgba(245, 158, 11, 0.08);
-  border-radius: 8px;
-  color: #B45309;
-  font-size: 12px;
+.form-row .lbl {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ct-font-mono);
 }
+.form-row .req { color: var(--ct-amber); }
+.form-row .val {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.form-row .val.full { width: 100%; }
+.form-row .val.inline { flex-wrap: wrap; }
+.form-row .dim { color: var(--ct-text-3); font-size: 11px; letter-spacing: 0.04em; }
+
+.radio-row {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--ct-divider);
+  background: var(--ct-bg-2);
+}
+.radio-row.full { width: 100%; }
+.radio-row.half { width: 60%; }
+.radio-row.half2 { width: 50%; }
+.radio-row .opt {
+  flex: 1;
+  height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--ct-text-2);
+  border-right: 1px solid var(--ct-divider);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  font-family: var(--ct-font-mono);
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+}
+.radio-row .opt:last-child { border-right: 0; }
+.radio-row .opt.active {
+  background: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
+}
+.radio-row .opt:not(.active):hover {
+  background: var(--ct-bg-hover);
+  color: var(--ct-text);
+}
+
+.inp-grp { display: inline-flex; align-items: center; }
+.inp-term {
+  height: 30px;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  color: var(--ct-text);
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: var(--ct-font-mono);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  width: 120px;
+}
+.inp-term.num { text-align: right; }
+.inp-term:focus { border-color: var(--ct-amber); }
+.suffix-term {
+  height: 30px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--ct-bg-3);
+  border: 1px solid var(--ct-divider);
+  border-left: 0;
+  font-size: 11px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+}
+
+.chip-input {
+  min-height: 30px;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  padding: 5px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.chip-input.full { width: 100%; }
+.chip-input input {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  min-width: 100px;
+  flex: 1;
+  letter-spacing: 0.04em;
+}
+.chip-input input::placeholder {
+  color: var(--ct-text-dim);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chip-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ct-bg-3);
+  border: 1px solid var(--ct-divider-strong);
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--ct-text-2);
+  letter-spacing: 0.04em;
+  font-family: var(--ct-font-mono);
+}
+.chip-term .x {
+  color: var(--ct-text-dim);
+  cursor: pointer;
+  padding-left: 2px;
+}
+.chip-term .x:hover { color: var(--ct-neg); }
+
+.chk-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.chk-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ct-text-2);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  user-select: none;
+  font-family: var(--ct-font-mono);
+}
+.chk-term .box {
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--ct-text-dim);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ct-amber);
+  font-size: 11px;
+  line-height: 1;
+}
+.chk-term.on .box { border-color: var(--ct-amber); }
+.chk-term.on { color: var(--ct-text); }
+
+.modal-foot {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-foot .lhs {
+  font-size: 10px;
+  color: var(--ct-text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+}
+.modal-foot .lhs .amber { color: var(--ct-amber); }
+.modal-foot .btns { display: flex; gap: 10px; }
+.btn-term {
+  height: 36px;
+  padding: 0 18px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+  font-weight: 500;
+  border: 1px solid var(--ct-divider-strong);
+  background: transparent;
+  color: var(--ct-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-term:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
+.btn-term.primary {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
+}
+.btn-term.primary:hover { filter: brightness(1.08); color: #0A0E14; }
+.btn-term:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

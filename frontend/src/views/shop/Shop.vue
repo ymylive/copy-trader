@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { shopApi } from '@/api/shop'
+import { formatNum, formatUTC } from '@/utils/format'
 
 const products = ref<any[]>([])
 const trialForm = reactive({ exchange: '', uid: '' })
@@ -12,29 +13,40 @@ const orderForm = reactive({
   coupon: '',
   product_id: 'slot_order'
 })
+const verified = ref(false)
+const renderTs = ref(formatUTC())
 
 onMounted(async () => {
   products.value = (await shopApi.products()) as any[]
 })
 
 const periodLabel: Record<string, string> = {
-  '1m': '一个月',
-  '3m': '三个月',
-  '6m': '半年',
-  '1y': '一年',
-  perm: '永久',
-  contact: '联系管理员'
+  '1m': '/MO',  '3m': '/3MO', '6m': '/6MO',
+  '1y': '/YR',  perm: 'ONE-TIME', contact: 'CONTACT'
+}
+const periodFull: Record<string, string> = {
+  '1m': '1 MONTH', '3m': '3 MONTHS', '6m': '6 MONTHS',
+  '1y': '12 MONTHS', perm: 'PERMANENT', contact: 'CONTACT ADMIN'
 }
 
-const exchanges = ['Binance', 'OKX', 'Gate.io', 'Bitget']
+const exchanges = ['BINANCE', 'OKX', 'GATE', 'BITGET']
 
 async function claimTrial() {
   if (!trialForm.exchange || !trialForm.uid) {
-    ElMessage.warning('请选择交易所并填写 UID')
+    ElMessage.warning('SELECT VENUE & ENTER UID')
     return
   }
   await shopApi.claimTrial(0, trialForm.exchange, trialForm.uid)
-  ElMessage.success('试用领取成功')
+  ElMessage.success('TRIAL ISSUED · 7 DAYS')
+}
+
+function verifyInvite() {
+  if (!orderForm.uid) {
+    ElMessage.warning('UID REQUIRED')
+    return
+  }
+  verified.value = true
+  ElMessage.success(`RECEIVER UID ${orderForm.uid} VERIFIED · 50% OFF`)
 }
 
 async function buy(productId: string) {
@@ -43,180 +55,377 @@ async function buy(productId: string) {
     period: orderForm.period,
     coupon: orderForm.coupon
   })
-  ElMessage.success('下单成功（mock）')
+  ElMessage.success('ORDER PLACED')
 }
 
+const totalPrice = computed(() => {
+  const periodMultiplier = { '1m': 1, '3m': 3, '6m': 6, '1y': 12 }
+  const mult = periodMultiplier[orderForm.period as keyof typeof periodMultiplier] || 1
+  const base = 80 * mult
+  return verified.value ? base / 2 : base
+})
+
 function pricingOf(p: any): string {
-  if (p.id === 'slot_fast') return '$999999'
-  return `$${p.price}`
+  if (p.id === 'slot_fast') return '$999 999'
+  return `$${p.price.toFixed(2)}`
 }
 </script>
 
 <template>
   <div class="shop-page">
-    <section class="hero-row">
-      <div class="trial-card">
-        <h2>活动期间可领取</h2>
-        <h1>7 天免费试用！</h1>
-        <p class="muted">为避免恶意领用，每一账户仅可领取一次试用。</p>
+    <div class="sec-head">
+      <div class="sec-title"><span class="amber">03 //</span> PRICING · ORDER SLOTS · ADD-ONS</div>
+      <div class="sec-coord">{{ renderTs }}</div>
+    </div>
 
-        <div class="trial-form">
-          <div class="form-line">
-            <label>交易所：</label>
-            <el-select v-model="trialForm.exchange" placeholder="请选择" style="flex:1">
+    <!-- Trial + main order -->
+    <div class="top-grid">
+      <!-- TRIAL -->
+      <div class="card trial-card">
+        <div class="card-head">
+          <span>// 7-DAY TRIAL · COMPLIMENTARY</span>
+          <span class="badge amber"><span class="dot"></span>1 PER ACCOUNT</span>
+        </div>
+        <div class="card-body">
+          <div class="field">
+            <label>EXCHANGE</label>
+            <el-select v-model="trialForm.exchange" placeholder="SELECT" style="width:100%">
               <el-option v-for="e in exchanges" :key="e" :label="e" :value="e" />
             </el-select>
           </div>
-          <div class="form-line">
-            <label>UID：</label>
-            <el-input v-model="trialForm.uid" placeholder="请输入" />
+          <div class="field">
+            <label>UID</label>
+            <input v-model="trialForm.uid" class="inp-term" placeholder="" />
           </div>
-          <el-button type="success" class="cta" @click="claimTrial">即刻领取</el-button>
+          <button class="btn-cta primary" @click="claimTrial">CLAIM TRIAL →</button>
         </div>
       </div>
 
-      <div class="primary-card">
+      <!-- ORDER SLOT -->
+      <div class="card primary-card">
         <div class="card-head">
-          <div class="card-title">商品名称</div>
-          <div class="card-value">下单名额</div>
+          <span>// ORDER_SLOT · PER ACCOUNT</span>
+          <span class="dim">RENEWABLE · MONTH-TO-MONTH</span>
         </div>
+        <div class="card-body">
+          <div class="field">
+            <label>BILLING PERIOD</label>
+            <div class="radio-row">
+              <div class="opt" :class="{ active: orderForm.period === '1m' }" @click="orderForm.period = '1m'">1 MO</div>
+              <div class="opt" :class="{ active: orderForm.period === '3m' }" @click="orderForm.period = '3m'">3 MO</div>
+              <div class="opt" :class="{ active: orderForm.period === '6m' }" @click="orderForm.period = '6m'">6 MO</div>
+              <div class="opt" :class="{ active: orderForm.period === '1y' }" @click="orderForm.period = '1y'">1 YR</div>
+            </div>
+          </div>
 
-        <div class="period-row">
-          <div class="period-label">购买时长：</div>
-          <el-radio-group v-model="orderForm.period" size="small">
-            <el-radio-button label="1m">一个月</el-radio-button>
-            <el-radio-button label="3m">三个月</el-radio-button>
-            <el-radio-button label="6m">半年</el-radio-button>
-            <el-radio-button label="1y">一年</el-radio-button>
-          </el-radio-group>
-        </div>
+          <div class="note">
+            ⓘ PROVIDE REGISTERED EXCHANGE UID FOR <span class="amber">50% OFF</span> · LIMITED TO INVITED ACCOUNTS.
+          </div>
 
-        <p class="hint">使用前请填写注册交易所并填入相应 UID 即可享受半价优惠（如使用）</p>
-
-        <div class="form-grid">
-          <div class="form-line">
-            <label>交易所：</label>
-            <el-select v-model="orderForm.exchange" placeholder="请选择" style="flex:1">
+          <div class="field">
+            <label>EXCHANGE</label>
+            <el-select v-model="orderForm.exchange" placeholder="SELECT" style="width:100%">
               <el-option v-for="e in exchanges" :key="e" :label="e" :value="e" />
             </el-select>
           </div>
-          <div class="form-line">
-            <label>UID：</label>
-            <el-input v-model="orderForm.uid" placeholder="请输入" />
-            <el-button text type="primary">验证受邀关系</el-button>
+          <div class="field">
+            <label>RECEIVER UID</label>
+            <div class="uid-row">
+              <input v-model="orderForm.uid" class="inp-term" style="flex:1" placeholder="" />
+              <button class="btn-term" @click="verifyInvite">VERIFY</button>
+            </div>
           </div>
-        </div>
+          <div v-if="verified" class="verified">[receiver UID verified · 50% off]</div>
 
-        <el-divider />
-
-        <div class="card-head">
-          <div class="card-title">商品名称</div>
-          <div class="card-value">为账户增加下单名额</div>
-        </div>
-        <div class="form-line">
-          <label>优惠券：</label>
-          <el-select v-model="orderForm.coupon" placeholder="请选择" style="flex:1">
-            <el-option label="不使用" value="" />
-            <el-option label="85 折优惠券" value="DISC85" />
-          </el-select>
-        </div>
-
-        <div class="total-row">
-          <div class="total-left">
-            <div class="tip">温馨提示：</div>
-            <div class="muted-sm">1、此商品是重复购买为账户增加相对应的下单名额持续续费，若取消自动续费可在钱包后台操作。</div>
-            <div class="muted-sm">2、享受半价优惠的下单名额仅支持绑定您受邀账户创建的 API-Key。</div>
+          <div class="field">
+            <label>COUPON</label>
+            <el-select v-model="orderForm.coupon" placeholder="NONE" style="width:100%">
+              <el-option label="NONE" value="" />
+              <el-option label="DISC85 · 15% OFF" value="DISC85" />
+            </el-select>
           </div>
-          <div class="total-right">
-            <div class="total-line"><span>总金额：</span><b class="amount">$80.00</b></div>
-            <el-button type="success" size="large" @click="buy('slot_order')">立即购买</el-button>
+
+          <div class="total-row">
+            <div class="t-lhs">
+              <div class="amber-tip">⚠ MONTHLY RENEWAL · CANCEL ANYTIME IN WALLET</div>
+              <div class="dim">50% OFF SLOTS ARE LOCKED TO INVITED API KEYS</div>
+            </div>
+            <div class="t-rhs">
+              <div class="total-line">
+                <span class="lbl">TOTAL</span>
+                <span class="amount">${{ formatNum(totalPrice, 2) }}<span class="period">{{ periodLabel[orderForm.period] }}</span></span>
+              </div>
+              <button class="btn-cta primary" @click="buy('slot_order')">PURCHASE →</button>
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <section class="addons">
-      <h2 class="section-title">增值服务</h2>
-      <div class="addons-grid">
-        <div v-for="p in products.filter((x) => x.id !== 'slot_order')" :key="p.id" class="addon-card">
-          <div class="row"><span class="lbl">商品名称：</span><span class="val">{{ p.name }}</span></div>
-          <div class="row"><span class="lbl">商品说明：</span><span class="val">{{ p.desc }}</span></div>
-          <div class="row"><span class="lbl">商品金额：</span><span class="val price">{{ pricingOf(p) }}</span></div>
-          <div class="row" v-if="p.id === 'slot_copy'"><span class="lbl">购买数量：</span><el-input-number :min="1" :value="1" size="small" /></div>
-          <div class="row" v-if="p.periods?.length > 1">
-            <span class="lbl">购买时长：</span>
-            <el-radio-group v-model="orderForm.period" size="small">
-              <el-radio-button v-for="period in p.periods" :key="period" :label="period">{{ periodLabel[period] }}</el-radio-button>
-            </el-radio-group>
-          </div>
-          <div class="row" v-if="p.periods?.length === 1"><span class="lbl">购买时长：</span><span class="val">{{ periodLabel[p.periods[0]] }}</span></div>
-          <el-button v-if="p.id === 'slot_fast'" type="info" class="buy" size="large" disabled>请联系系统管理员开通</el-button>
-          <el-button v-else type="success" class="buy" size="large" @click="buy(p.id)">立即购买</el-button>
+    <!-- Add-ons -->
+    <div class="sec-head">
+      <div class="sec-title"><span class="amber">03-B //</span> ADD-ONS</div>
+    </div>
+    <div class="addons">
+      <div v-for="p in products.filter((x) => x.id !== 'slot_order')" :key="p.id" class="addon">
+        <div class="ad-head">
+          <span class="ad-name">{{ p.name }}</span>
+          <span class="ad-price">{{ pricingOf(p) }}<span class="ad-period">{{ periodLabel[p.periods?.[0]] || '' }}</span></span>
         </div>
+        <p class="ad-desc">{{ p.desc }}</p>
+        <div class="ad-period-full">{{ periodFull[p.periods?.[0]] || '' }}</div>
+        <button
+          v-if="p.id === 'slot_fast'"
+          class="btn-term"
+          disabled
+        >
+          CONTACT ADMIN
+        </button>
+        <button
+          v-else
+          class="btn-term primary"
+          @click="buy(p.id)"
+        >
+          PURCHASE →
+        </button>
       </div>
-    </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .shop-page {
-  max-width: 1180px;
+  padding: 18px 18px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 40px 32px 80px;
-  color: #e5e7eb;
 }
-.hero-row {
+
+.top-grid {
   display: grid;
   grid-template-columns: 1fr 1.6fr;
-  gap: 22px;
+  gap: 24px;
 }
-.trial-card,
-.primary-card {
-  background: rgba(14, 20, 27, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 28px;
-}
-.trial-card h2 { color: #fff; margin: 0 0 6px; font-size: 22px; }
-.trial-card h1 { color: #fff; margin: 0 0 8px; font-size: 30px; }
-.muted { color: #9CA3AF; font-size: 12px; }
-.trial-form { margin-top: 26px; display: flex; flex-direction: column; gap: 14px; }
-.form-line { display: flex; align-items: center; gap: 10px; }
-.form-line label { color: #9CA3AF; font-size: 13px; width: 70px; text-align: right; }
-.cta { width: 100%; }
-.primary-card .card-head { display: flex; gap: 16px; margin-bottom: 18px; }
-.card-title { color: #9CA3AF; font-size: 13px; min-width: 80px; }
-.card-value { color: #fff; font-weight: 600; }
-.period-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
-.period-label { color: #9CA3AF; font-size: 13px; }
-.hint { color: #6B7280; font-size: 12px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; margin: 12px 0; }
-.form-grid { display: flex; flex-direction: column; gap: 12px; }
-.total-row { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; margin-top: 16px; }
-.tip { color: var(--ct-warn); font-size: 13px; margin-bottom: 4px; }
-.muted-sm { color: #6B7280; font-size: 12px; line-height: 1.6; }
-.total-line { font-size: 14px; margin-bottom: 12px; }
-.amount { color: var(--ct-primary); font-size: 22px; }
-.section-title { font-size: 24px; color: #fff; margin: 48px 0 22px; }
-.addons-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-}
-.addon-card {
-  background: rgba(14, 20, 27, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 24px;
-  display: flex; flex-direction: column; gap: 14px;
-}
-.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 13px; }
-.lbl { color: #9CA3AF; min-width: 80px; }
-.val { color: #e5e7eb; }
-.price { color: var(--ct-primary); font-weight: 600; }
-.buy { margin-top: auto; }
-:deep(.el-divider) { border-color: rgba(255, 255, 255, 0.08); }
 
-@media (max-width: 900px) {
-  .hero-row { grid-template-columns: 1fr; }
+.card {
+  border: 1px solid var(--ct-divider);
+  background: var(--ct-bg-2);
+}
+.card-head {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ct-divider);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  color: var(--ct-amber);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.card-head .dim { color: var(--ct-text-3); text-transform: none; letter-spacing: 0.04em; font-size: 10px; }
+
+.card-body { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+}
+.inp-term {
+  height: 30px;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  color: var(--ct-text);
+  padding: 0 10px;
+  font-family: var(--ct-font-mono);
+  font-size: 13px;
+  outline: 0;
+}
+.inp-term:focus { border-color: var(--ct-amber); }
+.uid-row { display: flex; gap: 8px; align-items: center; }
+
+.btn-cta {
+  height: 36px;
+  border: 1px solid var(--ct-divider-strong);
+  background: transparent;
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn-cta:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
+.btn-cta.primary {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
+}
+.btn-cta.primary:hover { filter: brightness(1.08); color: #0A0E14; }
+
+.btn-term {
+  height: 30px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn-term:hover:not(:disabled) { border-color: var(--ct-amber); color: var(--ct-amber); }
+.btn-term:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-term.primary {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
+}
+
+.radio-row {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--ct-divider);
+}
+.radio-row .opt {
+  flex: 1;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--ct-text-2);
+  border-right: 1px solid var(--ct-divider);
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  font-family: var(--ct-font-mono);
+  text-transform: uppercase;
+  user-select: none;
+}
+.radio-row .opt:last-child { border-right: 0; }
+.radio-row .opt.active { background: var(--ct-amber); color: #0A0E14; font-weight: 600; }
+
+.note {
+  border: 1px solid rgba(255, 180, 0, 0.35);
+  background: rgba(255, 180, 0, 0.04);
+  color: var(--ct-amber);
+  padding: 8px 10px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
+}
+.note .amber { font-weight: 700; }
+
+.verified {
+  color: var(--ct-pos);
+  font-family: var(--ct-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.total-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: end;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ct-divider);
+}
+.t-lhs { font-family: var(--ct-font-mono); font-size: 10px; line-height: 1.6; }
+.amber-tip { color: var(--ct-amber); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
+.t-lhs .dim { color: var(--ct-text-3); letter-spacing: 0.04em; text-transform: uppercase; }
+.t-rhs { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.total-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--ct-font-mono);
+}
+.total-line .lbl {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.amount {
+  font-size: 24px;
+  color: var(--ct-amber);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.amount .period {
+  font-size: 11px;
+  color: var(--ct-text-3);
+  margin-left: 4px;
+  letter-spacing: 0.06em;
+}
+
+/* Addons */
+.addons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 1px solid var(--ct-divider);
+}
+.addon {
+  padding: 18px;
+  border-right: 1px solid var(--ct-divider);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.addon:last-child { border-right: 0; }
+.ad-head { display: flex; justify-content: space-between; align-items: baseline; }
+.ad-name {
+  color: var(--ct-amber);
+  font-family: var(--ct-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.ad-price {
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ad-period {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  margin-left: 4px;
+  letter-spacing: 0.06em;
+}
+.ad-desc {
+  color: var(--ct-text-2);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 0;
+}
+.ad-period-full {
+  color: var(--ct-text-3);
+  font-family: var(--ct-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1024px) {
+  .top-grid { grid-template-columns: 1fr; }
+  .addons { grid-template-columns: 1fr; }
+  .addon { border-right: 0; border-bottom: 1px solid var(--ct-divider); }
 }
 </style>

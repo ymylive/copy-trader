@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import * as echarts from 'echarts'
+import { computed } from 'vue'
 import type { Trader } from '@/api/traders'
+import Sparkline from '@/components/Sparkline.vue'
+import { formatNum, formatSigned, formatPct, formatPctSigned } from '@/utils/format'
 
 interface Props {
   trader: Trader
+  initiating?: boolean
 }
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { initiating: false })
+
 const emit = defineEmits<{
   (e: 'start', t: Trader): void
   (e: 'reverse', t: Trader): void
@@ -14,222 +17,317 @@ const emit = defineEmits<{
   (e: 'detail', t: Trader): void
 }>()
 
-const chartEl = ref<HTMLDivElement>()
-
-const exchangeIcon = computed(() => {
+const exchangeTag = computed(() => {
   const e = props.trader.exchange
-  const map: Record<string, { bg: string; label: string }> = {
-    binance: { bg: '#F0B90B', label: 'B' },
-    okx: { bg: '#000', label: 'O' },
-    bitget: { bg: '#00C2C7', label: 'BG' },
-    hyperliquid: { bg: '#97FCE4', label: 'HL' },
-    evm: { bg: '#627EEA', label: 'Ξ' }
+  const map: Record<string, { label: string; cls: string }> = {
+    binance:    { label: 'BINANCE', cls: 'ex-binance' },
+    okx:        { label: 'OKX', cls: 'ex-okx' },
+    bitget:     { label: 'BITGET', cls: 'ex-bitget' },
+    hyperliquid:{ label: 'HYPERLIQUID', cls: 'ex-hl' },
+    evm:        { label: 'EVM', cls: 'ex-evm' }
   }
-  return map[e] || { bg: '#9CA3AF', label: '?' }
+  return map[e] || { label: e.toUpperCase(), cls: '' }
 })
 
-const exchangeName = computed(() => {
-  const map: Record<string, string> = {
-    binance: 'Binance', okx: 'OKX', bitget: 'Bitget',
-    hyperliquid: 'Hyperliquid', evm: 'On-Chain'
-  }
-  return map[props.trader.exchange] || props.trader.exchange
+const sourceTag = computed(() => {
+  // additional badges
+  const tags = props.trader.tags || []
+  const out: { label: string; cls: string }[] = []
+  if (tags.includes('BICOIN')) out.push({ label: 'BICOIN', cls: 'src-bicoin' })
+  if (tags.includes('HIDDEN')) out.push({ label: 'HIDDEN', cls: 'src-hidden' })
+  if (tags.includes('LEAD'))   out.push({ label: 'LEAD',  cls: 'src-lead' })
+  if (tags.includes('SMART$')) out.push({ label: 'SMART$',cls: 'src-smart' })
+  return out
 })
 
-function fmt(n: number | null | undefined, decimals = 2) {
-  if (n == null) return '----'
-  return n.toLocaleString('en', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
+const uidLabel = computed(() => {
+  const ex = props.trader.exchange.toUpperCase()
+  const short = ex === 'BINANCE' ? 'BNB' : ex
+  return `UID ${short}:${props.trader.id}`
+})
 
-function renderChart() {
-  if (!chartEl.value || !props.trader.curve) return
-  const chart = echarts.init(chartEl.value)
-  const data = props.trader.curve
-  chart.setOption({
-    grid: { left: 0, right: 0, top: 4, bottom: 0 },
-    xAxis: { type: 'category', show: false, data: data.map((_, i) => i) },
-    yAxis: { type: 'value', show: false },
-    series: [
-      {
-        type: 'line',
-        smooth: true,
-        symbol: 'none',
-        data,
-        lineStyle: { width: 1.6, color: '#10B981' },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(16,185,129,0.4)' },
-            { offset: 1, color: 'rgba(16,185,129,0.01)' }
-          ])
-        }
-      }
-    ]
-  })
-}
+const stale = computed(() => props.trader.status === 'invalid')
 
-onMounted(renderChart)
-watch(() => props.trader.curve, renderChart)
+const pnlClass = computed(() => {
+  const v = props.trader.total_pnl
+  if (v == null || isNaN(v)) return 'zero'
+  if (v === 0) return 'zero'
+  return v > 0 ? '' : 'red'
+})
+
+const since = computed(() => {
+  const days = props.trader.enrolled_days
+  if (!days) return 'JOINED ── DAYS · DATA WITHHELD'
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return `JOINED ${formatNum(days, 0)} DAYS · ${dateStr}`
+})
+
+const isLongHorizon = computed(() => Math.abs(props.trader.roi) > 200)
+const pnlLabel = computed(() => isLongHorizon.value ? 'CUMULATIVE PNL · USDT' : '90D PNL · USDT')
+const roiLabel = computed(() => isLongHorizon.value ? 'ROI' : 'ROI 90D')
+
+const sparkColor = computed(() => {
+  const v = props.trader.total_pnl
+  if (v == null || isNaN(v) || v === 0) return '#6B7280'
+  return v > 0 ? '#FFB400' : '#EF4444'
+})
 </script>
 
 <template>
-  <div class="trader-card">
-    <div class="status-badge" :class="trader.status">
-      {{ trader.status === 'listed' ? '已上架' : '数据失效' }}
-    </div>
-
-    <div class="card-head">
-      <div class="ex-icon" :style="{ background: exchangeIcon.bg }">{{ exchangeIcon.label }}</div>
-      <div class="ex-name">{{ exchangeName }}</div>
+  <div class="tr-card" :class="{ stale }">
+    <!-- TOPLINE -->
+    <div class="topline">
       <div class="tags">
-        <span v-for="t in trader.tags" :key="t" class="tag">{{ t }}</span>
+        <span class="tag" :class="exchangeTag.cls">{{ exchangeTag.label }}</span>
+        <span v-for="t in sourceTag" :key="t.label" class="tag" :class="t.cls">{{ t.label }}</span>
       </div>
-      <el-icon
-        class="fav"
-        :class="{ active: trader.favorited }"
-        @click="emit('toggle-fav', trader)"
-      >
-        <svg v-if="trader.favorited" viewBox="0 0 24 24" width="18" height="18" fill="#F59E0B">
-          <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z" />
-        </svg>
-        <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9CA3AF" stroke-width="1.6">
-          <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z" />
-        </svg>
-      </el-icon>
+      <span class="status" :class="{ flag: stale }">{{ stale ? 'STALE' : 'LISTED' }}</span>
     </div>
 
-    <div class="trader-id mono">ID: {{ trader.id }}</div>
+    <!-- UID + NAME + SINCE -->
+    <div class="uid">{{ uidLabel }}</div>
+    <div class="name">{{ trader.nickname }}</div>
+    <div class="since">{{ since }}</div>
 
-    <div class="profile">
-      <div class="avatar">{{ trader.nickname.slice(0, 1) }}</div>
-      <div class="profile-info">
-        <div class="nick">{{ trader.nickname }}</div>
-        <div class="days">入驻时长: {{ trader.enrolled_days }} 天</div>
-      </div>
-      <a class="detail" @click="emit('detail', trader)">查看详情 ›</a>
+    <!-- PNL -->
+    <div class="pnl-lbl">{{ pnlLabel }}</div>
+    <div class="pnl" :class="pnlClass">
+      {{ formatSigned(trader.total_pnl, 2) }}
     </div>
 
-    <div ref="chartEl" class="spark"></div>
-
-    <div class="metrics-head">
-      <span>—— 90 天盈亏</span>
-      <span>—— 收益率</span>
+    <!-- STATS 4-GRID -->
+    <div class="stats">
+      <div class="stat">
+        <div class="k">{{ roiLabel }}</div>
+        <div class="v" :class="trader.roi >= 0 ? 'green' : 'red'">
+          {{ formatPctSigned(trader.roi, 2) }}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="k">AUM</div>
+        <div class="v" :class="{ dim: !trader.scale || isNaN(trader.scale) }">
+          {{ trader.scale && !isNaN(trader.scale) ? formatNum(trader.scale, 2) : 'NaN' }}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="k">{{ trader.sharpe != null ? 'SHARPE' : 'WIN RATE' }}</div>
+        <div class="v" :class="{
+          green: (trader.sharpe ?? 0) > 1 || (trader.sharpe == null && (trader.win_rate ?? 0) >= 60),
+          red:   (trader.sharpe ?? 0) < 0
+        }">
+          {{ trader.sharpe != null ? trader.sharpe.toFixed(2) : formatPct(trader.win_rate, 2) }}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="k">{{ trader.sharpe != null ? 'WIN / DD' : 'MAX DD' }}</div>
+        <div class="v" :class="{
+          green: (trader.max_drawdown ?? 100) < 5,
+          red: (trader.max_drawdown ?? 0) > 50
+        }">
+          <template v-if="trader.sharpe != null">
+            {{ formatPct(trader.win_rate, 2) }} / {{ formatPct(trader.max_drawdown, 2) }}
+          </template>
+          <template v-else>
+            {{ formatPct(trader.max_drawdown, 2) }}
+          </template>
+        </div>
+      </div>
     </div>
 
-    <div class="metrics">
-      <div class="metric">
-        <div class="val mono ct-pos">{{ fmt(trader.total_pnl) }} USDT</div>
-        <div class="lbl">带单规模</div>
-      </div>
-      <div class="metric">
-        <div class="val mono">{{ trader.sharpe == null ? '----' : trader.sharpe.toFixed(2) }}</div>
-        <div class="lbl">夏普比率</div>
-      </div>
-      <div class="metric">
-        <div class="val mono ct-pos">{{ fmt(trader.roi) }}%</div>
-        <div class="lbl">90 天胜率</div>
-      </div>
-      <div class="metric">
-        <div class="val mono">{{ trader.max_drawdown == null ? '----' : `${trader.max_drawdown.toFixed(1)}%` }}</div>
-        <div class="lbl">90 天最大回撤</div>
-      </div>
+    <!-- SPARKLINE -->
+    <div class="spark-wrap">
+      <Sparkline :data="trader.curve || []" :width="280" :height="18" :color="sparkColor" />
     </div>
 
+    <!-- ACTIONS -->
     <div class="actions">
-      <el-button type="primary" class="btn primary" @click="emit('start', trader)" :disabled="trader.status === 'invalid'">
-        启动跟单
-      </el-button>
-      <el-button class="btn reverse" @click="emit('reverse', trader)" :disabled="trader.status === 'invalid'">
-        反向跟单
-      </el-button>
+      <button
+        class="btn-cp"
+        :class="{ initiating }"
+        :disabled="stale"
+        @click="emit('start', trader)"
+      >
+        <template v-if="initiating">▌ INITIATING…</template>
+        <template v-else>COPY</template>
+      </button>
+      <button class="btn-inv" :disabled="stale" @click="emit('reverse', trader)">
+        INVERSE
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.trader-card {
+.tr-card {
   position: relative;
-  background: var(--ct-bg-card);
-  border: 1px solid var(--ct-border);
-  border-radius: var(--ct-r-lg);
-  padding: 16px 18px;
+  background: var(--ct-bg);
+  padding: 14px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  transition: background 120ms linear;
+  border: 0;
+  border-right: 1px solid var(--ct-divider);
+  border-bottom: 1px solid var(--ct-divider);
 }
-.trader-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--ct-primary);
-  box-shadow: var(--ct-shadow-md);
-}
-.status-badge {
-  position: absolute;
-  top: 0;
-  right: 18px;
-  padding: 3px 14px;
-  border-radius: 0 0 8px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #fff;
-}
-.status-badge.listed { background: var(--ct-primary); }
-.status-badge.invalid { background: var(--ct-text-3); }
-.card-head { display: flex; align-items: center; gap: 8px; }
-.ex-icon {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 700; font-size: 11px;
-}
-.ex-name { color: var(--ct-text-1); font-weight: 600; font-size: 14px; margin-right: 6px; }
-.tags { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
-.tag {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--ct-primary);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-}
-.fav { cursor: pointer; }
-.trader-id { color: var(--ct-text-3); font-size: 11px; }
-.profile { display: flex; align-items: center; gap: 10px; }
-.avatar {
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #34D399, #0D9488);
-  color: #fff;
-  font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-}
-.profile-info { flex: 1; }
-.nick { font-size: 14px; font-weight: 600; color: var(--ct-text-1); }
-.days { font-size: 11px; color: var(--ct-text-3); margin-top: 2px; }
-.detail { font-size: 12px; color: var(--ct-primary); cursor: pointer; }
-.spark { width: 100%; height: 70px; }
-.metrics-head {
-  display: flex; gap: 14px; font-size: 11px; color: var(--ct-text-3);
-  padding-bottom: 4px;
-}
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.tr-card:hover { background: var(--ct-bg-2); }
+.tr-card.stale { opacity: 0.5; }
+
+.topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 8px;
-  padding: 8px 0;
-  border-top: 1px dashed var(--ct-border);
 }
-.metric { text-align: left; }
-.val { font-size: 13px; font-weight: 600; color: var(--ct-text-1); }
-.lbl { font-size: 10px; color: var(--ct-text-3); margin-top: 2px; }
-.actions { display: flex; gap: 8px; }
-.btn { flex: 1; }
-.btn.primary {
-  background: var(--ct-primary);
-  border-color: var(--ct-primary);
-  color: #fff;
+.tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.tag {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text-2);
+  font-family: var(--ct-font-mono);
 }
-.btn.reverse {
-  background: rgba(56, 189, 248, 0.08);
-  border-color: rgba(56, 189, 248, 0.3);
-  color: var(--ct-accent);
+.tag.ex-okx     { color: var(--ct-teal);     border-color: rgba(31,204,177,0.35); }
+.tag.ex-binance { color: var(--ct-binance);  border-color: rgba(240,185,11,0.35); }
+.tag.ex-bitget  { color: #00C2C7;            border-color: rgba(0,194,199,0.35); }
+.tag.ex-hl      { color: #97FCE4;            border-color: rgba(151,252,228,0.35); }
+.tag.src-bicoin { color: var(--ct-amber);    border-color: rgba(255,180,0,0.35); }
+.tag.src-hidden { color: var(--ct-text-3); }
+.tag.src-lead   { color: var(--ct-violet);   border-color: rgba(167,139,250,0.35); }
+.tag.src-smart  { color: #34D399;            border-color: rgba(52,211,153,0.35); }
+
+.status {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  color: #0A0E14;
+  background: var(--ct-pos);
+  font-family: var(--ct-font-mono);
+  font-weight: 600;
 }
+.status.flag { background: var(--ct-neg); color: #0A0E14; }
+
+.uid {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.04em;
+  font-family: var(--ct-font-mono);
+}
+.name {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ct-text);
+}
+.since {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pnl-lbl {
+  font-size: 9px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.pnl {
+  margin-top: -2px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ct-amber);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.pnl.red  { color: var(--ct-neg); }
+.pnl.zero { color: var(--ct-text-3); }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+  margin-top: 4px;
+  border-top: 1px solid var(--ct-divider);
+}
+.stat {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ct-divider);
+}
+.stat:nth-child(2n) {
+  border-left: 1px solid var(--ct-divider);
+  padding-left: 8px;
+}
+.stat:nth-last-child(-n+2) { border-bottom: 0; }
+.stat .k {
+  font-size: 9px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.stat .v {
+  font-size: 13px;
+  color: var(--ct-text);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.stat .v.green { color: var(--ct-pos); }
+.stat .v.red   { color: var(--ct-neg); }
+.stat .v.dim   { color: var(--ct-text-3); }
+
+.spark-wrap { width: 100%; }
+
+.actions {
+  display: flex;
+  gap: 0;
+  margin-top: 6px;
+}
+.btn-cp {
+  flex: 1;
+  height: 30px;
+  background: var(--ct-amber);
+  color: #0A0E14;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  border: 1px solid var(--ct-amber);
+  font-family: var(--ct-font-mono);
+  cursor: pointer;
+}
+.btn-cp:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-cp:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-cp.initiating {
+  background: transparent;
+  color: var(--ct-amber);
+  animation: blink-bg 1s steps(2, start) infinite;
+}
+@keyframes blink-bg { 50% { background: rgba(255,180,0,0.08); } }
+
+.btn-inv {
+  flex: 1;
+  height: 30px;
+  background: transparent;
+  color: var(--ct-text);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  border: 1px solid var(--ct-divider-strong);
+  border-left: 0;
+  font-family: var(--ct-font-mono);
+  cursor: pointer;
+}
+.btn-inv:hover:not(:disabled) {
+  color: var(--ct-neg);
+  border-color: var(--ct-neg);
+}
+.btn-inv:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>

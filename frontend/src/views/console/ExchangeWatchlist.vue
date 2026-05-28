@@ -3,22 +3,24 @@ import { onMounted, ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAccountsStore } from '@/stores/accounts'
 import type { SignalSource } from '@/api/traders'
+import { formatNum, formatUTC } from '@/utils/format'
 
 const accStore = useAccountsStore()
 const search = ref('')
 const mode = ref<'global' | 'cookie'>('global')
 const activeSource = ref<SignalSource | 'all'>('all')
+const renderTs = ref(formatUTC())
 
 const sources = [
-  { value: 'all', label: '全部', icon: '★', bg: '#10B981' },
-  { value: 'binance', label: '币安', icon: 'B', bg: '#F0B90B' },
-  { value: 'smart_money', label: '聪明钱', icon: 'Σ', bg: '#000' },
-  { value: 'hyperbot', label: 'Hyperbot', icon: 'H', bg: '#06D6A0' }
+  { value: 'all',         label: 'ALL' },
+  { value: 'binance',     label: 'BINANCE' },
+  { value: 'smart_money', label: 'SMART$' },
+  { value: 'hyperbot',    label: 'HYPERBOT' }
 ] as const
 
 interface WatchItem {
   id: string
-  source: SignalSource
+  source: string
   exchange: string
   nickname: string
   added_at: string
@@ -33,17 +35,17 @@ onMounted(async () => {
 
 function doSearch() {
   if (!search.value) {
-    ElMessage.warning('请输入交易员链接、ID 或昵称')
+    ElMessage.warning('REQUIRE TRADER LINK / ID / NICKNAME')
     return
   }
   list.value.unshift({
     id: search.value,
-    source: 'binance',
-    exchange: currentAccount.value?.exchange || 'binance',
-    nickname: '搜索结果 · ' + search.value,
-    added_at: new Date().toLocaleString()
+    source: activeSource.value === 'all' ? 'BINANCE' : String(activeSource.value).toUpperCase(),
+    exchange: currentAccount.value?.exchange.toUpperCase() || 'BINANCE',
+    nickname: 'SEARCH · ' + search.value,
+    added_at: formatUTC()
   })
-  ElMessage.success('已加入自选列表')
+  ElMessage.success('ADDED TO WATCHLIST')
   search.value = ''
 }
 
@@ -54,148 +56,271 @@ function remove(id: string) {
 
 <template>
   <div class="watch-page">
-    <div class="warning">
-      注意事项：全域跟单模式下 Binance 公开持仓的交易员开平仓均可无延迟跟单，
-      若交易员为隐藏持仓则开仓平仓将存在 2~3 分钟延迟。
-    </div>
-    <div class="warning red">
-      注意事项：因币 coin 平台自身因素，在行情波动剧烈时跟单延迟将不可控，
-      用户需时常留意自身仓位；若交易员已隐藏持仓及操作，则无法跟单，
-      并且买卖模式交易员无法爬取操作记录，仅支持爬取持仓信息。
+    <div class="sec-head">
+      <div class="sec-title"><span class="amber">05 //</span> EXCHANGE WATCHLIST · ARBITRARY TRADER SEARCH</div>
+      <div class="sec-coord">{{ renderTs }}</div>
     </div>
 
-    <div class="account-row">
-      <div class="lbl">请选择下单账户：</div>
-      <el-select :model-value="accStore.currentId" style="width:260px" @update:model-value="(v: number) => accStore.select(v)">
-        <el-option v-for="a in accStore.list" :key="a.id" :label="`${a.name}【${a.exchange.toUpperCase()}】`" :value="a.id" />
+    <!-- warnings -->
+    <div class="warn">
+      ⚠ GLOBAL MODE: BINANCE PUBLIC POSITIONS NO-DELAY · HIDDEN POSITIONS HAVE 2-3MIN DELAY.
+    </div>
+
+    <!-- Account strip -->
+    <div class="acct-strip">
+      <span class="label">DOWNSTREAM ACCOUNT:</span>
+      <el-select
+        :model-value="accStore.currentId ?? undefined"
+        style="width:280px"
+        @update:model-value="(v: number) => accStore.select(v)"
+      >
+        <el-option v-for="a in accStore.list" :key="a.id" :label="a.name" :value="a.id" />
       </el-select>
-      <span class="info">交易所账户余额 <b class="mono">{{ currentAccount?.futures_balance?.toFixed(2) || '——' }} USDT</b></span>
+      <span class="dim">BAL <span class="amber">{{ currentAccount ? formatNum(currentAccount.futures_balance, 2) : '——' }} USDT</span></span>
     </div>
 
-    <div class="source-tabs">
-      <div
+    <!-- Source tabs -->
+    <div class="src-tabs">
+      <button
         v-for="s in sources"
         :key="s.value"
         class="src-tab"
         :class="{ active: activeSource === s.value }"
-        @click="activeSource = s.value"
+        @click="activeSource = s.value as any"
       >
-        <span class="src-radio" :class="{ on: activeSource === s.value }"></span>
-        <span class="src-icon" :style="{ background: s.bg }">{{ s.icon }}</span>
-        <span>{{ s.label }}</span>
-      </div>
+        {{ s.label }}
+      </button>
     </div>
 
+    <!-- Mode switch -->
     <div class="mode-row">
-      <div class="mode-switch">
-        <button :class="{ active: mode === 'global' }" @click="mode = 'global'">全域跟单</button>
-        <button :class="{ active: mode === 'cookie' }" @click="mode = 'cookie'">
-          Cookie 跟单
-          <span class="svip-tag">SVIP</span>
-        </button>
-      </div>
+      <button class="chip-btn" :class="{ active: mode === 'global' }" @click="mode = 'global'">GLOBAL TRADING</button>
+      <button class="chip-btn" :class="{ active: mode === 'cookie' }" @click="mode = 'cookie'">
+        COOKIE TRADING <span class="svip-tag">SVIP</span>
+      </button>
 
       <div class="search-row">
-        <el-input v-model="search" placeholder="输入交易员链接 / 身份 ID / 昵称以搜索交易员" style="width:460px">
-          <template #prefix>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          </template>
-        </el-input>
-        <el-button type="primary" @click="doSearch">搜索</el-button>
-        <el-button>我的收藏</el-button>
+        <input class="search-inp" v-model="search" placeholder="ENTER TRADER LINK / UID / NICKNAME" @keyup.enter="doSearch" />
+        <button class="btn-term primary" @click="doSearch">SEARCH</button>
+        <button class="btn-term">FAVORITES</button>
       </div>
     </div>
 
-    <div class="ct-card list-card">
-      <div class="card-head"><span>自选列表</span><span class="muted">{{ list.length }} 项</span></div>
-      <el-table :data="list" empty-text="暂无自选交易员，使用上方搜索框添加">
-        <el-table-column label="信号源" prop="source" width="120" />
-        <el-table-column label="交易员" prop="nickname" />
-        <el-table-column label="ID" prop="id" />
-        <el-table-column label="添加时间" prop="added_at" />
-        <el-table-column label="操作" width="160">
-          <template #default="{ row }">
-            <el-button text type="primary" size="small">启动跟单</el-button>
-            <el-button text type="danger" size="small" @click="remove(row.id)">移除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <!-- list -->
+    <div class="list-wrap">
+      <div class="list-head">
+        <span>WATCHLIST · {{ list.length }} ENTRIES</span>
+        <span class="dim">SORT BY ADDED ↓</span>
+      </div>
+      <table v-if="list.length" class="w-table">
+        <thead>
+          <tr>
+            <th>SOURCE</th>
+            <th>NICKNAME</th>
+            <th>UID</th>
+            <th>EXCHANGE</th>
+            <th>ADDED</th>
+            <th class="r">OPS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in list" :key="row.id">
+            <td>{{ row.source }}</td>
+            <td>{{ row.nickname }}</td>
+            <td class="amber">{{ row.id }}</td>
+            <td>{{ row.exchange }}</td>
+            <td class="t">{{ row.added_at }}</td>
+            <td class="r">
+              <button class="link" @click="remove(row.id)">REMOVE</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="empty">— EMPTY · USE SEARCH ABOVE TO ADD TRADERS —</div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .watch-page { display: flex; flex-direction: column; gap: 14px; }
-.warning {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.16);
-  color: #B91C1C;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 12px;
+
+.warn {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.06);
+  color: var(--ct-neg);
+  padding: 8px 12px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--ct-font-mono);
   line-height: 1.6;
 }
-.warning.red { background: rgba(244, 63, 94, 0.06); }
-.account-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.lbl { color: var(--ct-text-1); font-weight: 600; }
-.info { color: var(--ct-text-2); font-size: 13px; }
-.source-tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+
+.acct-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+}
+.acct-strip .label { color: var(--ct-text-3); letter-spacing: 0.12em; text-transform: uppercase; }
+.acct-strip .dim { color: var(--ct-text-3); }
+.acct-strip .amber { color: var(--ct-amber); }
+
+.src-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--ct-divider);
 }
 .src-tab {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--ct-bg-card);
-  border: 1px solid var(--ct-border);
-  border-radius: 10px;
-  padding: 12px 16px;
-  cursor: pointer;
-}
-.src-tab.active { background: var(--ct-primary-50); border-color: var(--ct-primary); color: var(--ct-primary); font-weight: 600; }
-.src-radio { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #D1D5DB; position: relative; }
-.src-radio.on { border-color: var(--ct-primary); }
-.src-radio.on::after { content: ''; position: absolute; inset: 2px; background: var(--ct-primary); border-radius: 50%; }
-.src-icon {
-  width: 22px; height: 22px;
-  border-radius: 50%; color: #fff; font-weight: 700; font-size: 11px;
-  display: flex; align-items: center; justify-content: center;
-}
-.mode-row { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; align-items: center; padding: 8px 0; }
-.mode-switch {
-  display: inline-flex;
-  background: var(--ct-bg-card);
-  border: 1px solid var(--ct-border);
-  border-radius: 12px;
-  padding: 4px;
-  gap: 4px;
-}
-.mode-switch button {
-  position: relative;
-  background: transparent; border: 0;
-  padding: 10px 28px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 18px;
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--ct-text-2);
-  font-weight: 500;
+  cursor: pointer;
 }
-.mode-switch button.active {
-  background: var(--ct-primary);
-  color: #fff;
+.src-tab.active { color: var(--ct-amber); border-bottom-color: var(--ct-amber); }
+.src-tab:hover:not(.active) { color: var(--ct-text); }
+
+.mode-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.chip-btn {
+  position: relative;
+  background: transparent;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text-2);
+  padding: 6px 14px;
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.chip-btn:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
+.chip-btn.active {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
 }
 .svip-tag {
-  position: absolute;
-  top: -8px; right: -6px;
-  background: #FBBF24;
-  color: #78350F;
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 4px;
+  display: inline-block;
+  background: var(--ct-amber);
+  color: #0A0E14;
+  font-size: 9px;
+  padding: 1px 4px;
+  margin-left: 4px;
   font-weight: 700;
 }
-.search-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.list-card { padding: 20px; }
-.card-head { display: flex; justify-content: space-between; margin-bottom: 12px; font-weight: 600; color: var(--ct-text-1); }
-.muted { color: var(--ct-text-3); font-weight: 400; }
+.chip-btn.active .svip-tag { background: #0A0E14; color: var(--ct-amber); }
+
+.search-row {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.search-inp {
+  height: 30px;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  color: var(--ct-text);
+  padding: 0 12px;
+  font-family: var(--ct-font-mono);
+  font-size: 12px;
+  outline: 0;
+  width: 360px;
+}
+.search-inp:focus { border-color: var(--ct-amber); }
+.btn-term {
+  height: 30px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn-term:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
+.btn-term.primary {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
+}
+
+.list-wrap {
+  border: 1px solid var(--ct-divider);
+  background: var(--ct-bg);
+}
+.list-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ct-divider);
+  background: var(--ct-bg-2);
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.w-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ct-font-mono);
+  font-size: 12px;
+}
+.w-table th,
+.w-table td {
+  height: 30px;
+  padding: 0 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--ct-divider);
+}
+.w-table th {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.w-table .r { text-align: right; }
+.w-table .amber { color: var(--ct-amber); }
+.w-table .t { color: var(--ct-text-dim); }
+.empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--ct-text-3);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.link {
+  background: transparent;
+  border: 0;
+  color: var(--ct-neg);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.link:hover { color: var(--ct-amber); }
 </style>

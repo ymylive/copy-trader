@@ -4,13 +4,14 @@ import { ElMessage } from 'element-plus'
 import { useWalletStore } from '@/stores/wallet'
 import RechargeDialog from '@/components/RechargeDialog.vue'
 import { walletApi } from '@/api/wallet'
+import { formatNum, formatSigned, formatUTC } from '@/utils/format'
 
 const wallet = useWalletStore()
 const rechargeOpen = ref(false)
 const addrDialogOpen = ref(false)
 const addresses = ref<any[]>([])
-
 const newAddr = ref({ chain: 'TRC20', address: '' })
+const renderTs = ref(formatUTC())
 
 onMounted(async () => {
   await wallet.load()
@@ -24,150 +25,305 @@ async function openAddrDialog() {
 
 function addAddress() {
   if (!newAddr.value.address) {
-    ElMessage.warning('请输入地址')
+    ElMessage.warning('ADDRESS REQUIRED')
     return
   }
   addresses.value.push({ id: Date.now(), ...newAddr.value })
   newAddr.value = { chain: 'TRC20', address: '' }
-  ElMessage.success('地址已添加')
+  ElMessage.success('ADDRESS ADDED')
 }
 
 async function withdraw() {
-  ElMessage.info('请输入金额并选择地址（演示）')
+  ElMessage.info('SPECIFY AMOUNT & ADDRESS (DEMO)')
 }
 </script>
 
 <template>
   <div class="wallet-page">
-    <div class="grid">
-      <div class="card wallet-card">
-        <div class="card-head">
-          <div class="title">我的钱包</div>
-          <a class="link" @click="openAddrDialog">提现地址管理 ⚙</a>
-        </div>
-        <div class="wallet-body">
-          <div class="balance-card">
-            <div class="lbl">账户余额</div>
-            <div class="num mono">${{ wallet.balance.toFixed(2) }}</div>
-            <div class="hint">由于部分交易所限制，金额小于 5USDT 时暂不支持提现</div>
-          </div>
-          <div class="actions">
-            <div class="withdrawn">
-              <div class="lbl">已提现金额</div>
-              <div class="num mono">${{ wallet.withdrawn.toFixed(2) }}</div>
-            </div>
-            <el-button type="success" size="large" class="btn" @click="rechargeOpen = true">充值</el-button>
-            <el-button size="large" class="btn" @click="withdraw">提现</el-button>
-          </div>
-        </div>
-      </div>
+    <div class="sec-head">
+      <div class="sec-title"><span class="amber">04 //</span> WALLET · BALANCE · RESOURCES · LEDGER</div>
+      <div class="sec-coord">{{ renderTs }}</div>
+    </div>
 
-      <div class="card coupon-card">
-        <div class="title">优惠券</div>
-        <div class="empty">—— 暂无优惠券 ——</div>
+    <div class="asset-row">
+      <div class="asset-cell">
+        <div class="k">USDT BALANCE</div>
+        <div class="v amber">${{ formatNum(wallet.balance, 2) }}</div>
+        <div class="sub">MIN WITHDRAWAL 5 USDT</div>
+      </div>
+      <div class="asset-cell">
+        <div class="k">CUMULATIVE WITHDRAWN</div>
+        <div class="v">${{ formatNum(wallet.withdrawn, 2) }}</div>
+        <div class="sub">HISTORICAL TOTAL</div>
+      </div>
+      <div class="asset-cell actions">
+        <div class="k">OPERATIONS</div>
+        <div class="act-row">
+          <button class="btn-cta primary" @click="rechargeOpen = true">RECHARGE</button>
+          <button class="btn-cta" @click="withdraw">WITHDRAW</button>
+          <button class="btn-cta" @click="openAddrDialog">ADDR MGT</button>
+        </div>
       </div>
     </div>
 
-    <div class="section-title">我的资源</div>
-    <el-table :data="wallet.resources" empty-text="暂无资源" style="width:100%; margin-bottom:30px">
-      <el-table-column label="购买时间" prop="bought_at" />
-      <el-table-column label="商品" prop="product" />
-      <el-table-column label="续费时间" prop="renew_at" />
-      <el-table-column label="到期时间" prop="expire_at" />
-      <el-table-column label="操作">
-        <template #default="{ row }">
-          <el-switch v-model="row.auto_renew" size="small" />
-          <span class="muted-sm" style="margin-left:6px">自动续费</span>
-          <el-button text type="primary" size="small" style="margin-left:10px">续费</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <!-- Resources -->
+    <div class="block">
+      <div class="block-head">
+        <span><span class="amber">// RESOURCES</span> · ACTIVE SUBSCRIPTIONS</span>
+        <span class="dim">{{ wallet.resources.length }} ITEMS</span>
+      </div>
+      <table v-if="wallet.resources.length" class="t-table">
+        <thead>
+          <tr>
+            <th>PRODUCT</th>
+            <th>PURCHASED</th>
+            <th>LAST RENEWED</th>
+            <th>EXPIRES</th>
+            <th>AUTO RENEW</th>
+            <th class="r">OPS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="r in wallet.resources" :key="r.id">
+            <td>{{ r.product }}</td>
+            <td class="t">{{ r.bought_at }}</td>
+            <td class="t">{{ r.renew_at }}</td>
+            <td class="amber">{{ r.expire_at }}</td>
+            <td>
+              <el-switch v-model="r.auto_renew" size="small" />
+            </td>
+            <td class="r"><button class="link">RENEW</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="empty">— NO ACTIVE RESOURCES —</div>
+    </div>
 
-    <div class="section-title">资金明细</div>
-    <el-table :data="wallet.txns" empty-text="暂无流水" style="width:100%">
-      <el-table-column label="类型" prop="type" width="100" />
-      <el-table-column label="日期" prop="date" />
-      <el-table-column label="金额">
-        <template #default="{ row }">
-          <span class="mono" :class="row.amount >= 0 ? 'ct-pos' : 'ct-neg'">
-            {{ row.amount >= 0 ? '+' : '' }}{{ row.amount.toFixed(2) }} USDT
-          </span>
-        </template>
-      </el-table-column>
-      <el-table-column label="来源 / 目标" prop="source" />
-    </el-table>
+    <!-- Ledger -->
+    <div class="block">
+      <div class="block-head">
+        <span><span class="amber">// LEDGER</span> · TRANSACTION HISTORY</span>
+        <span class="dim">{{ wallet.txns.length }} ENTRIES</span>
+      </div>
+      <table v-if="wallet.txns.length" class="t-table">
+        <thead>
+          <tr>
+            <th>TYPE</th>
+            <th>DATE</th>
+            <th class="r">AMOUNT (USDT)</th>
+            <th>SOURCE / DESTINATION</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="t in wallet.txns" :key="t.id">
+            <td class="amber">{{ t.type }}</td>
+            <td class="t">{{ t.date }}</td>
+            <td class="r" :class="t.amount >= 0 ? 'pos' : 'neg'">
+              {{ formatSigned(t.amount, 2) }}
+            </td>
+            <td>{{ t.source }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="empty">— NO TRANSACTIONS —</div>
+    </div>
 
     <RechargeDialog v-model="rechargeOpen" />
 
-    <el-dialog v-model="addrDialogOpen" title="提现地址管理" width="520px">
+    <el-dialog v-model="addrDialogOpen" :show-close="false" width="600px">
+      <template #header>
+        <div class="dlg-head">// WITHDRAW_ADDRESS_MGT</div>
+      </template>
       <div class="addr-form">
         <el-select v-model="newAddr.chain" style="width:130px">
           <el-option label="TRC20" value="TRC20" />
           <el-option label="ERC20" value="ERC20" />
         </el-select>
-        <el-input v-model="newAddr.address" placeholder="USDT 地址" />
-        <el-button type="primary" @click="addAddress">添加</el-button>
+        <input v-model="newAddr.address" class="inp-term" style="flex:1" placeholder="USDT ADDRESS" />
+        <button class="btn-term primary" @click="addAddress">ADD</button>
       </div>
-      <el-table :data="addresses" empty-text="暂无地址" style="margin-top:14px">
-        <el-table-column label="链" prop="chain" width="100" />
-        <el-table-column label="地址" prop="address" />
-      </el-table>
+      <table class="t-table" style="margin-top:14px">
+        <thead><tr><th>CHAIN</th><th>ADDRESS</th></tr></thead>
+        <tbody>
+          <tr v-for="a in addresses" :key="a.id">
+            <td class="amber">{{ a.chain }}</td>
+            <td class="addr">{{ a.address }}</td>
+          </tr>
+        </tbody>
+      </table>
     </el-dialog>
   </div>
 </template>
 
 <style scoped>
 .wallet-page {
-  max-width: 1180px;
+  padding: 18px 18px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 40px 32px 80px;
-  color: #e5e7eb;
-}
-.grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 22px;
-}
-.card {
-  background: rgba(14, 20, 27, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 26px;
-}
-.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-.title { font-size: 17px; font-weight: 600; color: #fff; }
-.link { color: #9CA3AF; font-size: 13px; cursor: pointer; }
-.wallet-body { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; align-items: center; }
-.balance-card {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(0, 0, 0, 0.2));
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  border-radius: 14px;
-  padding: 20px 22px;
-}
-.lbl { color: #9CA3AF; font-size: 13px; }
-.balance-card .num { font-size: 30px; font-weight: 700; color: #fff; margin-top: 6px; }
-.hint { color: #6B7280; font-size: 11px; margin-top: 12px; line-height: 1.5; }
-.actions { display: flex; flex-direction: column; gap: 12px; }
-.withdrawn .num { font-size: 22px; font-weight: 700; color: #fff; margin-top: 4px; }
-.btn { width: 100%; }
-.coupon-card { display: flex; flex-direction: column; }
-.empty { color: #6B7280; text-align: center; padding: 36px 0; }
-.section-title { font-size: 18px; color: #fff; margin: 28px 0 12px; font-weight: 600; }
-.addr-form { display: flex; gap: 10px; }
-.muted-sm { color: #6B7280; font-size: 12px; }
-:deep(.el-table) {
-  --el-table-bg-color: rgba(14, 20, 27, 0.55);
-  --el-table-tr-bg-color: rgba(14, 20, 27, 0.55);
-  --el-table-header-bg-color: rgba(14, 20, 27, 0.85);
-  --el-table-text-color: #d1d5db;
-  --el-table-header-text-color: #9CA3AF;
-  --el-table-border-color: rgba(255, 255, 255, 0.05);
-  border-radius: 14px;
-  overflow: hidden;
 }
 
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
-  .wallet-body { grid-template-columns: 1fr; }
+.asset-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 1px solid var(--ct-divider);
+}
+.asset-cell {
+  padding: 18px 18px;
+  border-right: 1px solid var(--ct-divider);
+}
+.asset-cell:last-child { border-right: 0; }
+.asset-cell .k {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.asset-cell .v {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ct-text);
+  font-variant-numeric: tabular-nums;
+}
+.asset-cell .v.amber { color: var(--ct-amber); }
+.asset-cell .sub {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+.asset-cell.actions { display: flex; flex-direction: column; gap: 8px; }
+.act-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-cta {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--ct-divider-strong);
+  background: transparent;
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn-cta:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
+.btn-cta.primary {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
+}
+
+.block { border: 1px solid var(--ct-divider); }
+.block-head {
+  padding: 8px 12px;
+  background: var(--ct-bg-2);
+  border-bottom: 1px solid var(--ct-divider);
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  color: var(--ct-text-2);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.block-head .amber { color: var(--ct-amber); }
+.block-head .dim { color: var(--ct-text-3); }
+
+.t-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ct-font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.t-table th,
+.t-table td {
+  height: 30px;
+  padding: 0 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--ct-divider);
+}
+.t-table th {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--ct-bg-2);
+  font-weight: 500;
+}
+.t-table .r { text-align: right; }
+.t-table .t { color: var(--ct-text-dim); }
+.t-table .amber { color: var(--ct-amber); }
+.t-table .pos { color: var(--ct-pos); }
+.t-table .neg { color: var(--ct-neg); }
+.t-table .addr { color: var(--ct-amber); word-break: break-all; }
+.empty {
+  text-align: center;
+  padding: 30px 0;
+  color: var(--ct-text-3);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.link {
+  background: transparent;
+  border: 0;
+  color: var(--ct-amber);
+  font-family: var(--ct-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dlg-head {
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  color: var(--ct-amber);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.addr-form { display: flex; gap: 10px; align-items: center; }
+.inp-term {
+  height: 30px;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  color: var(--ct-text);
+  padding: 0 10px;
+  font-family: var(--ct-font-mono);
+  font-size: 12px;
+  outline: 0;
+}
+.inp-term:focus { border-color: var(--ct-amber); }
+.btn-term {
+  height: 30px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn-term.primary {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .asset-row { grid-template-columns: 1fr; }
+  .asset-cell { border-right: 0; border-bottom: 1px solid var(--ct-divider); }
 }
 </style>

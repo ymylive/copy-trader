@@ -5,10 +5,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAccountsStore } from '@/stores/accounts'
 import { accountsApi } from '@/api/accounts'
 import IpAllowlist from '@/components/IpAllowlist.vue'
+import { BLOOMBERG_THEME } from '@/charts/echartsTheme'
+import { formatNum, formatUTC } from '@/utils/format'
 
 const accStore = useAccountsStore()
 const chartEl = ref<HTMLDivElement>()
-const view = ref<'curve' | 'calendar'>('curve')
+let chart: echarts.ECharts | null = null
+
+const renderTs = ref(formatUTC())
+const apiVisible = ref(false)
 
 onMounted(async () => {
   await accStore.load()
@@ -21,183 +26,167 @@ watch(() => accStore.currentId, async () => {
   await drawChart()
 })
 
-watch(view, () => {
-  nextTick(drawChart)
-})
-
 const current = computed(() => accStore.current)
 
 async function drawChart() {
   if (!chartEl.value || !current.value) return
-  const chart = echarts.init(chartEl.value)
-  const data = await accountsApi.pnlSeries(current.value.id) as any[]
+  chart?.dispose()
+  chart = echarts.init(chartEl.value, BLOOMBERG_THEME, { renderer: 'canvas' })
+  const data = (await accountsApi.pnlSeries(current.value.id)) as any[]
 
-  if (view.value === 'curve') {
-    chart.setOption({
-      grid: { left: 50, right: 16, top: 30, bottom: 30 },
-      tooltip: { trigger: 'axis' },
-      xAxis: {
-        type: 'category',
-        data: data.map((_, i) => `D${i + 1}`),
-        axisLabel: { color: '#9CA3AF', fontSize: 10 },
-        axisLine: { lineStyle: { color: '#E5E7EB' } }
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: { color: '#9CA3AF' },
-        splitLine: { lineStyle: { color: '#F3F4F6' } }
-      },
-      series: [
-        {
-          type: 'line',
-          smooth: true,
-          symbol: 'none',
-          data: data.map((d) => d.value),
-          lineStyle: { width: 2, color: '#10B981' },
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(16,185,129,0.35)' },
-              { offset: 1, color: 'rgba(16,185,129,0.01)' }
-            ])
-          }
+  chart.setOption({
+    backgroundColor: 'transparent',
+    grid: { left: 60, right: 20, top: 20, bottom: 30 },
+    xAxis: {
+      type: 'category',
+      data: data.map((_, i) => `D${i + 1}`),
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#6B7280', fontSize: 9, interval: 4 }
+    },
+    yAxis: {
+      scale: true,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#6B7280', fontSize: 9 },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } }
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0A0E14',
+      borderColor: '#FFB400',
+      borderWidth: 1,
+      textStyle: { color: '#E6E8EA', fontFamily: 'JetBrains Mono', fontSize: 11 }
+    },
+    series: [{
+      type: 'line',
+      data: data.map((d) => d.value),
+      symbol: 'none',
+      smooth: false,
+      lineStyle: { color: '#FFB400', width: 1.5 },
+      areaStyle: {
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(255,180,0,0.18)' },
+            { offset: 1, color: 'rgba(255,180,0,0)' }
+          ]
         }
-      ]
-    })
-  } else {
-    // calendar heatmap-style
-    const cal = data.map((d, i) => [`2026-04-${String((i % 30) + 1).padStart(2, '0')}`, d.value])
-    chart.setOption({
-      tooltip: {},
-      visualMap: {
-        min: 0,
-        max: Math.max(...data.map((d) => d.value)),
-        calculable: false,
-        orient: 'horizontal',
-        left: 'center',
-        bottom: 0,
-        inRange: { color: ['#D1FAE5', '#10B981', '#047857'] }
-      },
-      calendar: {
-        top: 30,
-        left: 30,
-        right: 30,
-        cellSize: ['auto', 22],
-        range: '2026-04',
-        itemStyle: { borderColor: '#fff' },
-        dayLabel: { color: '#9CA3AF' },
-        monthLabel: { color: '#374151' }
-      },
-      series: { type: 'heatmap', coordinateSystem: 'calendar', data: cal }
-    })
-  }
-  window.addEventListener('resize', () => chart.resize())
+      }
+    }]
+  })
+  window.addEventListener('resize', () => chart?.resize())
 }
-
-function exchangeBadge(ex: string) {
-  const map: Record<string, { bg: string; label: string }> = {
-    binance: { bg: '#F0B90B', label: 'B' },
-    okx: { bg: '#000', label: 'O' },
-    gate: { bg: '#2354E6', label: 'G' },
-    bitget: { bg: '#00C2C7', label: 'BG' },
-    hyperliquid: { bg: '#97FCE4', label: 'HL' }
-  }
-  return map[ex] || { bg: '#9CA3AF', label: '?' }
-}
-
-const apiVisible = ref(false)
 
 async function changeLeverage() {
-  const { value } = await ElMessageBox.prompt('请输入新的杠杆倍数', '修改杠杆', { inputPattern: /^\d+$/ })
-  if (current.value) await accountsApi.setLeverage(current.value.id, 'BTCUSDT', Number(value))
-  ElMessage.success('杠杆已更新（mock）')
+  try {
+    const { value } = await ElMessageBox.prompt('NEW LEVERAGE (1-125)', 'EDIT LEVERAGE', { inputPattern: /^\d+$/ })
+    if (current.value) await accountsApi.setLeverage(current.value.id, 'BTCUSDT', Number(value))
+    ElMessage.success('LEVERAGE UPDATED')
+  } catch { /* aborted */ }
 }
 
 async function editApi() {
-  ElMessage.info('编辑 Apikey 弹窗（演示）')
+  ElMessage.info('EDIT API KEYS — DIALOG (MOCK)')
 }
 
 async function removeAccount() {
-  await ElMessageBox.confirm('确定删除当前账户？删除后无法恢复。', '提示', { type: 'warning' })
-  if (current.value) await accountsApi.remove(current.value.id)
-  ElMessage.success('已删除（mock）')
-  await accStore.load()
+  try {
+    await ElMessageBox.confirm('DELETE THIS ACCOUNT? CANNOT BE UNDONE.', 'CONFIRM', { type: 'warning' })
+    if (current.value) await accountsApi.remove(current.value.id)
+    ElMessage.success('ACCOUNT REMOVED')
+    await accStore.load()
+  } catch { /* aborted */ }
 }
 </script>
 
 <template>
-  <div class="accounts-page">
-    <div class="warning">
-      注意事项：交易员广场中上架的交易员无论是否为隐藏持仓，开平仓均无延迟。
-      平台是否上架取决于技术原因或其他成本考量，上架不构成任何投资建议，过往数据不代表未来表现。
+  <div class="acct-page">
+    <div class="sec-head">
+      <div class="sec-title"><span class="amber">02 //</span> ACCOUNT MANAGEMENT · 4 BOUND · 3 ACTIVE</div>
+      <div class="sec-coord">{{ renderTs }}</div>
     </div>
 
-    <el-tabs
-      :model-value="accStore.currentId ?? undefined"
-      type="card"
-      class="acc-tabs"
-      @update:model-value="(v) => accStore.select(Number(v))"
-    >
-      <el-tab-pane
+    <!-- Tab strip -->
+    <div class="acct-tabs">
+      <button
         v-for="acc in accStore.list"
         :key="acc.id"
-        :name="acc.id"
-        :label="acc.name"
-      />
-    </el-tabs>
+        class="acct-tab"
+        :class="{ active: accStore.currentId === acc.id, paused: !acc.active }"
+        @click="accStore.select(acc.id)"
+      >
+        <span class="tab-name">{{ acc.name }}</span>
+        <span class="tab-uid">UID {{ acc.uid }}</span>
+        <span class="status-dot" :class="acc.active ? 'on' : 'off'"></span>
+      </button>
+    </div>
 
-    <div v-if="current" class="acc-detail ct-card">
-      <div class="row top-row">
-        <div class="lbl">当前账户类型：</div>
-        <div class="val"><b>{{ current.name }}</b></div>
-        <span class="active-tag">激活</span>
+    <div v-if="current" class="acct-detail">
+      <!-- Header row -->
+      <div class="detail-head hairline">
+        <div class="head-cell">
+          <div class="k">EXCHANGE</div>
+          <div class="v">{{ current.exchange.toUpperCase() }}</div>
+        </div>
+        <div class="head-cell">
+          <div class="k">UID</div>
+          <div class="v amber">{{ current.uid }}</div>
+        </div>
+        <div class="head-cell">
+          <div class="k">STATUS</div>
+          <div class="v" :class="current.active ? 'green' : 'red'">
+            {{ current.active ? '● ACTIVE' : '○ PAUSED' }}
+          </div>
+        </div>
+        <div class="head-cell">
+          <div class="k">INVITED REL.</div>
+          <div class="v">{{ current.invited ? '✓ VERIFIED' : '— NONE' }}</div>
+        </div>
+        <div class="head-cell">
+          <div class="k">FUTURES BAL</div>
+          <div class="v">{{ formatNum(current.futures_balance, 2) }} <span class="unit">USDT</span></div>
+        </div>
+        <div class="head-cell">
+          <div class="k">TOTAL ASSETS</div>
+          <div class="v amber">{{ formatNum(current.total_assets, 2) }} <span class="unit">USDT</span></div>
+        </div>
+      </div>
+
+      <!-- Actions row -->
+      <div class="actions-row">
+        <button class="chip-btn" @click="changeLeverage">EDIT LEVERAGE</button>
+        <button class="chip-btn" @click="editApi">EDIT API KEYS</button>
+        <button class="chip-btn danger" @click="removeAccount">REMOVE ACCOUNT</button>
+        <div class="spacer"></div>
         <el-switch v-model="current.active" inline-prompt active-text="ON" inactive-text="OFF" />
       </div>
 
-      <div class="row">
+      <!-- API row -->
+      <div class="api-row">
+        <div class="api-line">
+          <span class="lbl">API_KEY:</span>
+          <span class="mono-val">{{ apiVisible ? current.api_key.replace(/•/g, 'x') : current.api_key }}</span>
+        </div>
+        <div class="api-line">
+          <span class="lbl">SECRET:</span>
+          <span class="mono-val">{{ apiVisible ? current.secret_key.replace(/•/g, 'x') : current.secret_key }}</span>
+        </div>
+        <button class="chip-btn small" @click="apiVisible = !apiVisible">
+          {{ apiVisible ? 'HIDE' : 'REVEAL' }}
+        </button>
+      </div>
+
+      <!-- IP allowlist -->
+      <div class="ip-row">
         <IpAllowlist :ips="current.egress_ips" />
       </div>
 
-      <div class="row">
-        <div class="lbl">交易所：</div>
-        <div class="ex-icon" :style="{ background: exchangeBadge(current.exchange).bg }">{{ exchangeBadge(current.exchange).label }}</div>
-        <div class="ex-name">{{ current.exchange.toUpperCase() }}</div>
-        <span class="sep">UID:</span>
-        <span class="mono">{{ current.uid }}</span>
-        <span v-if="current.invited" class="invited-tag">受邀户</span>
-
-        <div class="spacer"></div>
-
-        <el-button @click="changeLeverage">修改杠杆</el-button>
-        <el-button @click="editApi">编辑 Apikey</el-button>
-        <el-button type="danger" plain @click="removeAccount">删除当前账户</el-button>
-      </div>
-
-      <div class="row">
-        <div class="lbl">合约账户余额：</div>
-        <div class="val mono">{{ current.futures_balance.toFixed(2) }} USDT</div>
-        <span class="sep">账户总资产：</span>
-        <span class="mono">{{ current.total_assets.toFixed(2) }} USDT</span>
-      </div>
-
-      <div class="api-row">
-        <div>
-          <span class="lbl">API Key：</span>
-          <span class="mono">{{ apiVisible ? current.api_key.replace(/•/g, 'x') : current.api_key }}</span>
-        </div>
-        <div>
-          <span class="lbl">Secret Key：</span>
-          <span class="mono">{{ apiVisible ? current.secret_key.replace(/•/g, 'x') : current.secret_key }}</span>
-        </div>
-        <el-button text type="primary" @click="apiVisible = !apiVisible">{{ apiVisible ? '隐藏' : '显示' }}</el-button>
-      </div>
-
-      <div class="curve-block">
-        <div class="curve-head">
-          <span class="title">收益曲线</span>
-          <el-radio-group v-model="view" size="small">
-            <el-radio-button label="curve">收益曲线</el-radio-button>
-            <el-radio-button label="calendar">盈亏日历</el-radio-button>
-          </el-radio-group>
+      <!-- Equity chart -->
+      <div class="panel">
+        <div class="panel-head">
+          <span>EQUITY CURVE · 30D · {{ current.name }}</span>
+          <span class="badge amber"><span class="dot"></span>LIVE</span>
         </div>
         <div ref="chartEl" class="chart"></div>
       </div>
@@ -206,59 +195,168 @@ async function removeAccount() {
 </template>
 
 <style scoped>
-.accounts-page { display: flex; flex-direction: column; gap: 16px; }
-.warning {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  color: #B91C1C;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.acc-tabs { background: var(--ct-bg-card); border-radius: 10px; padding: 4px 8px; }
-:deep(.el-tabs--card > .el-tabs__header .el-tabs__item.is-active) {
-  background: var(--ct-primary-50);
-  border-color: var(--ct-primary);
-  color: var(--ct-primary);
-}
-.acc-detail { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
-.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--ct-text-1); }
-.top-row { font-size: 14px; }
-.lbl { color: var(--ct-text-2); }
-.val { color: var(--ct-text-1); }
-.active-tag {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--ct-primary);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-}
-.invited-tag {
-  background: rgba(245, 158, 11, 0.12);
-  color: #B45309;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-}
-.ex-icon { width: 22px; height: 22px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 11px; display: flex; align-items: center; justify-content: center; }
-.ex-name { font-weight: 600; }
-.sep { color: var(--ct-text-3); margin-left: 8px; }
-.spacer { flex: 1; }
-.api-row {
+.acct-page {
   display: flex;
-  gap: 18px;
-  align-items: center;
-  background: var(--ct-bg-elev);
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 12px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* tab strip */
+.acct-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--ct-divider);
   flex-wrap: wrap;
 }
-.curve-block { margin-top: 6px; }
-.curve-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.title { font-weight: 600; color: var(--ct-text-1); }
-.chart { width: 100%; height: 320px; }
+.acct-tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  font-family: var(--ct-font-mono);
+  position: relative;
+  text-align: left;
+}
+.acct-tab .tab-name {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ct-text-2);
+}
+.acct-tab .tab-uid {
+  font-size: 10px;
+  color: var(--ct-text-dim);
+  letter-spacing: 0.04em;
+}
+.acct-tab.active {
+  border-bottom-color: var(--ct-amber);
+}
+.acct-tab.active .tab-name { color: var(--ct-amber); }
+.acct-tab .status-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+}
+.acct-tab .status-dot.on { background: var(--ct-pos); }
+.acct-tab .status-dot.off { background: var(--ct-text-dim); }
+
+.acct-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* head row */
+.detail-head {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border: 1px solid var(--ct-divider);
+}
+.head-cell {
+  padding: 14px 14px;
+  border-right: 1px solid var(--ct-divider);
+}
+.head-cell:last-child { border-right: 0; }
+.head-cell .k {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.head-cell .v {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ct-text);
+  font-variant-numeric: tabular-nums;
+}
+.head-cell .v.green { color: var(--ct-pos); }
+.head-cell .v.red   { color: var(--ct-neg); }
+.head-cell .v.amber { color: var(--ct-amber); }
+.head-cell .v .unit {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  margin-left: 4px;
+}
+
+/* actions */
+.actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.chip-btn {
+  background: transparent;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text-2);
+  padding: 6px 12px;
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.chip-btn:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
+.chip-btn.danger { border-color: rgba(239,68,68,0.4); color: var(--ct-neg); }
+.chip-btn.danger:hover { background: rgba(239,68,68,0.08); border-color: var(--ct-neg); color: var(--ct-neg); }
+.chip-btn.small { padding: 4px 10px; font-size: 10px; }
+.spacer { flex: 1; }
+
+/* api */
+.api-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--ct-bg-2);
+  border: 1px solid var(--ct-divider);
+  padding: 12px 14px;
+}
+.api-line { display: flex; gap: 8px; font-family: var(--ct-font-mono); font-size: 12px; }
+.api-line .lbl {
+  color: var(--ct-text-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.mono-val {
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  letter-spacing: 0.02em;
+  word-break: break-all;
+}
+
+.ip-row {
+  padding: 8px 0;
+}
+
+/* panel */
+.panel { border: 1px solid var(--ct-divider); background: var(--ct-bg-2); }
+.panel-head {
+  height: 28px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ct-divider);
+  font-size: 10px;
+  color: var(--ct-text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.chart {
+  width: 100%;
+  height: 320px;
+}
+
+@media (max-width: 1100px) {
+  .detail-head { grid-template-columns: repeat(3, 1fr); }
+  .head-cell:nth-child(3) { border-right: 0; }
+}
 </style>

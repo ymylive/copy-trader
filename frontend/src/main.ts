@@ -7,7 +7,14 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import App from './App.vue'
 import router from './router'
 import { i18n } from './i18n'
+import { registerBloombergTheme } from './charts/echartsTheme'
 import './styles/global.css'
+
+// Force terminal dark mode
+document.documentElement.classList.add('dark')
+
+// Register Bloomberg ECharts theme globally
+registerBloombergTheme()
 
 const app = createApp(App)
 app.use(createPinia())

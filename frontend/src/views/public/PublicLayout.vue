@@ -2,46 +2,48 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import StatusBar from '@/components/StatusBar.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
 const tabs = [
-  { name: 'home', label: '首页' },
-  { name: 'invite', label: '推广返佣' },
-  { name: 'shop', label: '商城' },
-  { name: 'wallet', label: '钱包' },
-  { name: 'profile', label: '个人中心' },
-  { name: 'tutorial', label: '使用教程' }
+  { name: 'home',     idx: '01', label: 'HERO' },
+  { name: 'tutorial', idx: '02', label: 'DOCS' },
+  { name: 'shop',     idx: '03', label: 'PRICING' },
+  { name: 'wallet',   idx: '04', label: 'WALLET' },
+  { name: 'invite',   idx: '05', label: 'REFERRAL' },
+  { name: 'profile',  idx: '06', label: 'SECURITY' }
 ]
 const active = computed(() => String(route.name || 'home'))
 </script>
 
 <template>
-  <div class="public-shell ct-space ct-space-stars">
-    <header class="topbar">
-      <div class="brand" @click="router.push('/')">
-        <img src="/logo.svg" alt="logo" />
-        <span class="brand-text">Copy Trader</span>
+  <div class="public-shell">
+    <StatusBar :uid="auth.user?.id ?? 52494073" />
+
+    <nav class="topnav">
+      <div class="wordmark" @click="router.push('/')">
+        COPY<span class="slash">//</span>TRADER<span class="ver">v2.6.1 · BUILD 8941</span>
       </div>
-      <nav class="nav">
+      <div class="nav-tabs">
         <router-link
           v-for="t in tabs"
           :key="t.name"
           :to="t.name === 'home' ? '/' : `/${t.name}`"
-          class="tab-li"
+          class="nav-tab"
           :class="{ active: active === t.name }"
         >
-          {{ t.label }}
+          <span class="idx">{{ t.idx }}</span>{{ t.label }}
         </router-link>
-        <router-link to="/console" class="tab-li tab-cta">控制台</router-link>
-      </nav>
-      <div class="actions">
-        <router-link v-if="!auth.isAuthed" to="/login" class="login-btn">Login</router-link>
-        <span v-else class="user-pill">{{ auth.user?.nickname || auth.user?.username || 'cornna' }}</span>
       </div>
-    </header>
+      <div class="right">
+        <router-link to="/console" class="console-pill">CONSOLE →</router-link>
+        <router-link v-if="!auth.isAuthed" to="/login" class="login-pill">LOGIN</router-link>
+        <span v-else class="user-pill">{{ auth.user?.nickname || 'MAIETRY' }}</span>
+      </div>
+    </nav>
 
     <main class="public-main">
       <router-view />
@@ -51,79 +53,99 @@ const active = computed(() => String(route.name || 'home'))
 
 <style scoped>
 .public-shell {
-  position: relative;
+  background: var(--ct-bg);
   min-height: 100vh;
-  overflow-x: hidden;
+  color: var(--ct-text);
+  padding-top: 74px;
 }
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
+
+.topnav {
+  position: fixed;
+  top: 22px;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: var(--ct-bg);
+  border-bottom: 1px solid var(--ct-divider);
+  height: 52px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 32px;
-  backdrop-filter: blur(10px);
-  background: rgba(6, 8, 12, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0 18px;
+  font-family: var(--ct-font-mono);
 }
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.wordmark {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ct-text);
   cursor: pointer;
 }
-.brand img { width: 32px; height: 32px; }
-.brand-text {
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.5px;
-  font-size: 17px;
+.wordmark .slash { color: var(--ct-amber); }
+.wordmark .ver {
+  font-size: 10px;
+  color: var(--ct-text-3);
+  margin-left: 8px;
+  letter-spacing: 0.08em;
 }
-.nav {
+.nav-tabs {
   display: flex;
-  gap: 28px;
+  gap: 0;
+  margin-left: 36px;
+  height: 52px;
+}
+.nav-tab {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ct-text-2);
+  border-bottom: 2px solid transparent;
+  transition: color 80ms linear;
+}
+.nav-tab:hover { color: var(--ct-text); }
+.nav-tab.active {
+  color: var(--ct-amber);
+  border-bottom-color: var(--ct-amber);
+}
+.nav-tab .idx {
+  color: var(--ct-text-dim);
+  margin-right: 8px;
+  font-size: 10px;
+}
+.nav-tab.active .idx { color: var(--ct-amber); }
+
+.right {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
   align-items: center;
 }
-.tab-li {
-  color: #d1d5db;
-  font-size: 14px;
-  padding: 6px 4px;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+.console-pill,
+.login-pill,
+.user-pill {
+  padding: 6px 14px;
+  border: 1px solid var(--ct-divider-strong);
+  color: var(--ct-text);
+  font-family: var(--ct-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
-.tab-li:hover { color: #fff; }
-.tab-li.active {
-  color: var(--ct-space-accent);
-  border-bottom-color: var(--ct-space-accent);
+.console-pill {
+  background: var(--ct-amber);
+  border-color: var(--ct-amber);
+  color: #0A0E14 !important;
   font-weight: 600;
 }
-.tab-cta {
-  background: var(--ct-space-accent);
-  color: #06140a !important;
-  padding: 8px 18px;
-  border-radius: 999px;
-  font-weight: 700;
-  border: 0 !important;
-}
-.tab-cta:hover { filter: brightness(1.05); }
-.actions { display: flex; align-items: center; }
-.login-btn,
-.user-pill {
-  padding: 8px 22px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #e5e7eb;
-  font-size: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.login-btn:hover { background: rgba(255, 255, 255, 0.1); }
-.public-main { position: relative; z-index: 1; }
+.console-pill:hover { filter: brightness(1.08); }
+.login-pill:hover { border-color: var(--ct-amber); color: var(--ct-amber); }
 
-@media (max-width: 768px) {
-  .topbar { padding: 12px 16px; }
-  .nav { gap: 14px; }
-  .tab-li { font-size: 12px; }
-  .brand-text { display: none; }
+.public-main { position: relative; }
+
+@media (max-width: 1024px) {
+  .nav-tabs { display: none; }
 }
 </style>
