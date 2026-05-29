@@ -23,8 +23,11 @@ export interface Trader {
 }
 
 export const tradersApi = {
-  list: (params?: { source?: SignalSource; favorite_only?: boolean; q?: string }) => mockOr(
-    () => http.get<Trader[]>('/traders', { params }),
+  list: (
+    params?: { source?: SignalSource; favorite_only?: boolean; q?: string },
+    opts?: { silent?: boolean }
+  ) => mockOr(
+    () => http.get<Trader[]>('/traders', { params, meta: { silent: opts?.silent } }),
     () => {
       let list = mockTraders()
       if (params?.source) list = list.filter((t) => t.source === params.source)

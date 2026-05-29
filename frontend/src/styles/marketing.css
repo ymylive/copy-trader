@@ -1,0 +1,86 @@
+/* ───────────────────────────────────────────────────────────────
+   INSTITUTIONAL CLARITY — light Swiss marketing theme
+   Scoped strictly to .marketing-site. Must NOT leak into the dark
+   D1 console. Source of truth: design/marketing/direction_clarity.html
+   ─────────────────────────────────────────────────────────────── */
+
+.marketing-site {
+  /* ── palette ── */
+  --m-paper: #FCFCFA;
+  --m-paper-2: #F6F5F1;
+  --m-ink: #14161A;
+  --m-ink-2: #3A3F47;
+  --m-ink-3: #6B7178;
+  --m-ink-4: #A4A9B0;
+  --m-line: rgba(20, 22, 26, 0.12);
+  --m-line-strong: rgba(20, 22, 26, 0.22);
+  --m-accent: #FF4D00;
+  --m-accent-soft: rgba(255, 77, 0, 0.08);
+  --m-pos: #167A3C;
+  --m-neg: #C2362B;
+  --m-radius: 2px;
+
+  /* ── type families ──
+     CJK fallback baked into every stack so Chinese never renders as
+     tofu (□) when the Latin webfont lacks glyphs. We rely on SYSTEM
+     CJK faces (PingFang SC / Microsoft YaHei / Songti SC) — no heavy
+     webfont is loaded. */
+  --m-font-display: 'Inter Tight', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, system-ui, sans-serif;
+  --m-font-serif: 'Newsreader', 'Songti SC', 'STSong', Georgia, 'Times New Roman', serif;
+  --m-font-mono: 'Geist Mono', 'Space Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* ── rhythm ── */
+  --m-grid-gap: 24px;
+  --m-pad: clamp(20px, 4vw, 72px);
+  --m-maxw: 1320px;
+
+  /* ── scoped base ── */
+  min-height: 100vh;
+  background: var(--m-paper);
+  color: var(--m-ink);
+  font-family: var(--m-font-display);
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* links default to ink (override global a{color:var(--ct-amber)}) */
+.marketing-site a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* numeric helper inside marketing — tabular figures */
+.marketing-site .m-num,
+.marketing-site .m-mono {
+  font-family: var(--m-font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.marketing-site .m-pos { color: var(--m-pos); }
+.marketing-site .m-neg { color: var(--m-neg); }
+
+.marketing-site ::selection {
+  background: var(--m-accent);
+  color: var(--m-paper);
+}
+
+/* ── reset global.css forced overrides back to Swiss ──
+   global.css applies `border-radius:0 !important; font-family:mono !important`
+   to button/input. We re-assert with equal !important weight, scoped. */
+.marketing-site button,
+.marketing-site input,
+.marketing-site select,
+.marketing-site textarea {
+  border-radius: var(--m-radius) !important;
+  font-family: var(--m-font-display) !important;
+}
+
+/* mono UI controls inside marketing opt back into mono via .m-mono-ctrl */
+.marketing-site button.m-mono-ctrl,
+.marketing-site input.m-mono-ctrl {
+  font-family: var(--m-font-mono) !important;
+}

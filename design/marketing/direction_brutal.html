@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Copy Trader — Signal Brutalism</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Black&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<style>
+/* ============================================================
+   SIGNAL BRUTALISM · Copy Trader
+   Sagmeister & Walsh × Pentagram(experimental) × crypto brutalism
+   ============================================================ */
+:root{
+  --ink:#0A0A0A;
+  --paper:#F2F0EA;
+  --acid:#D6FF3D;        /* single impact accent */
+  --acid-dim:#b8e02f;
+  --line:#0A0A0A;
+  --pos:#0A0A0A;
+  --neg:#FF2E63;         /* used ONLY for honest negative sample + tiny ticks */
+  --ink-70:rgba(10,10,10,.70);
+  --ink-55:rgba(10,10,10,.55);
+  --ink-40:rgba(10,10,10,.40);
+  --ink-12:rgba(10,10,10,.12);
+  --paper-12:rgba(242,240,234,.14);
+  --paper-40:rgba(242,240,234,.45);
+  --paper-70:rgba(242,240,234,.72);
+  --bw:2.5px;            /* brutalist border weight */
+  --display:'Anton', 'Archivo', Impact, sans-serif;
+  --grotesk:'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --mono:'Space Mono', ui-monospace, 'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--grotesk);
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  line-height:1.25;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;}
+.mono{font-family:var(--mono);}
+.tighten{letter-spacing:-.02em;}
+h1,h2,h3,h4{text-wrap:balance;}
+p{text-wrap:pretty;}
+a{color:inherit;text-decoration:none;}
+::selection{background:var(--acid);color:var(--ink);}
+
+.wrap{max-width:1320px;margin:0 auto;padding:0 40px;}
+
+/* ---- label / kicker ---- */
+.kicker{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--ink-55);
+}
+.tag{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  border:var(--bw) solid var(--ink);
+  padding:5px 9px 4px;
+  display:inline-block;
+  line-height:1;
+}
+
+/* ============================ NAV ============================ */
+.nav{
+  position:sticky;top:0;z-index:60;
+  background:var(--paper);
+  border-bottom:var(--bw) solid var(--ink);
+}
+.nav-inner{
+  max-width:1320px;margin:0 auto;padding:0 40px;
+  height:70px;display:flex;align-items:center;justify-content:space-between;
+}
+.wordmark{
+  font-family:var(--display);
+  font-size:25px;letter-spacing:.01em;text-transform:uppercase;
+  display:flex;align-items:center;gap:9px;line-height:1;
+}
+.wordmark .mk{
+  background:var(--ink);color:var(--acid);
+  padding:6px 8px 4px;display:inline-block;
+}
+.wordmark .mk2{color:var(--ink);}
+.nav-links{display:flex;align-items:center;gap:30px;}
+.nav-links a.navlink{
+  font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-70);position:relative;padding:4px 0;
+}
+.nav-links a.navlink:hover{color:var(--ink);}
+.nav-links a.navlink::after{
+  content:'';position:absolute;left:0;bottom:-2px;height:2px;width:0;background:var(--acid);transition:width .22s ease;
+}
+.nav-links a.navlink:hover::after{width:100%;}
+.nav-cta-group{display:flex;align-items:center;gap:14px;}
+.btn{
+  font-family:var(--mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;
+  border:var(--bw) solid var(--ink);background:var(--paper);color:var(--ink);
+  padding:11px 18px;cursor:pointer;line-height:1;font-weight:700;
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink);}
+.btn.primary{background:var(--acid);border-color:var(--ink);}
+.btn.primary:hover{background:var(--acid);box-shadow:4px 4px 0 var(--ink);}
+.btn.ink{background:var(--ink);color:var(--paper);}
+.btn.ink:hover{box-shadow:4px 4px 0 var(--acid);}
+.btn.lg{padding:15px 26px;font-size:13px;}
+
+/* ============================ HERO ============================ */
+.hero{position:relative;border-bottom:var(--bw) solid var(--ink);overflow:hidden;}
+.hero-grid{
+  display:grid;grid-template-columns:1.18fr .82fr;
+}
+.hero-left{
+  padding:54px 0 48px 0;
+  border-right:var(--bw) solid var(--ink);
+  padding-right:48px;
+}
+.hero-right{position:relative;}
+.hero-ribbon{
+  display:flex;gap:0;border-bottom:var(--bw) solid var(--ink);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+}
+.hero-ribbon span{padding:9px 0;color:var(--ink-55);}
+.hero-ribbon .blink{color:var(--ink);}
+.hero-ribbon .dot{width:7px;height:7px;background:var(--acid);border:1.5px solid var(--ink);border-radius:50%;display:inline-block;margin-right:7px;vertical-align:middle;animation:pulse 1.6s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+.hero-h1{
+  font-family:var(--display);
+  text-transform:uppercase;
+  font-size:clamp(48px,11vw,108px);line-height:.86;
+  letter-spacing:-.035em;            /* optical compensation for >90px display */
+  font-feature-settings:'kern' 1;
+  margin:26px 0 0;
+}
+.hero-h1 .row{display:block;}
+.hero-h1 .hl{
+  background:var(--acid);
+  /* optical: tighter top/right inset so acid block hugs Anton glyph sidebearings */
+  padding:.02em .14em .06em .10em;display:inline-block;
+  box-shadow:5px 5px 0 var(--ink);margin:.05em 0 .03em;
+  letter-spacing:-.04em;
+}
+.hero-h1 .out{
+  -webkit-text-stroke:2.5px var(--ink);color:transparent;
+}
+.hero-sub{
+  font-size:17.5px;line-height:1.45;color:var(--ink-70);max-width:520px;margin:30px 0 0;font-weight:500;
+}
+.hero-sub b{color:var(--ink);font-weight:700;}
+.hero-cta-row{display:flex;align-items:center;gap:16px;margin-top:34px;flex-wrap:wrap;}
+.hero-fine{font-family:var(--mono);font-size:11px;color:var(--ink-55);letter-spacing:.04em;}
+
+/* evidence badges */
+.badges{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  border-top:var(--bw) solid var(--ink);margin-top:44px;
+}
+.badge{
+  padding:22px 0 18px;border-right:var(--bw) solid var(--ink);
+}
+.badge:last-child{border-right:none;}
+.badge .bnum{font-family:var(--display);font-size:42px;line-height:.9;text-transform:uppercase;}
+.badge .bnum em{font-style:normal;background:var(--acid);padding:0 5px;}
+.badge .blabel{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-55);margin-top:9px;}
+
+/* hero signal matrix */
+.matrix-head{
+  border-bottom:var(--bw) solid var(--ink);
+  padding:10px 18px;display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-70);
+}
+.sim-tag{border:1.5px solid var(--ink);background:var(--acid);color:var(--ink);padding:3px 7px 2px;letter-spacing:.12em;line-height:1;}
+#signalMatrix{display:block;width:100%;background:var(--ink);}
+.matrix-foot{
+  border-top:var(--bw) solid var(--ink);background:var(--ink);color:var(--paper-70);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+  padding:9px 18px;display:flex;justify-content:space-between;height:38px;align-items:center;
+}
+.matrix-foot .lv{color:var(--acid);}
+
+/* ticker */
+.ticker{
+  background:var(--ink);color:var(--paper);border-bottom:var(--bw) solid var(--ink);
+  overflow:hidden;white-space:nowrap;height:42px;display:flex;align-items:center;
+}
+.ticker-track{display:inline-flex;gap:0;animation:scroll 38s linear infinite;}
+.ticker-track .ti{
+  font-family:var(--mono);font-size:12px;letter-spacing:.05em;padding:0 26px;
+  border-right:1px solid var(--paper-12);display:flex;align-items:center;gap:10px;
+}
+.ticker-track .k{color:var(--paper-40);text-transform:uppercase;font-size:10.5px;letter-spacing:.12em;}
+.ticker-track .up{color:var(--acid);}
+.ticker-track .dn{color:var(--neg);}
+@keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+
+/* ============================ SECTION SHELL ============================ */
+.sec{border-bottom:var(--bw) solid var(--ink);}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:54px 0 30px;}
+.sec-head .idx{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--ink-55);}
+.sec-title{font-family:var(--display);text-transform:uppercase;font-size:clamp(40px,6vw,60px);line-height:.9;letter-spacing:-.025em;font-feature-settings:'kern' 1;}
+.sec-title .acid{background:var(--acid);padding:.01em .12em .05em .09em;}
+.sec-desc{font-size:15px;color:var(--ink-70);max-width:380px;font-weight:500;line-height:1.5;}
+
+/* ============================ TRUST BAND ============================ */
+.trust{background:var(--ink);color:var(--paper);border-bottom:var(--bw) solid var(--ink);}
+.trust-inner{max-width:1320px;margin:0 auto;padding:0 40px;}
+.trust-row{display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--paper-12);}
+.trust-row:last-child{border-bottom:none;}
+.trust-lab{
+  padding:24px 0;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper-40);
+  border-right:1px solid var(--paper-12);display:flex;align-items:center;
+}
+.trust-items{display:flex;flex-wrap:wrap;}
+.trust-items .it{
+  font-family:var(--display);text-transform:uppercase;font-size:23px;letter-spacing:.01em;
+  padding:24px 28px;border-right:1px solid var(--paper-12);display:flex;align-items:center;gap:10px;
+  transition:color .15s ease, background .15s ease;
+}
+.trust-items .it:last-child{border-right:none;}
+.trust-items .it:hover{color:var(--ink);background:var(--acid);}
+.trust-items .it .badge-sm{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1.5px solid var(--acid);color:var(--acid);
+  padding:2px 5px;border-radius:0;
+}
+.trust-items .it:hover .badge-sm{border-color:var(--ink);color:var(--ink);}
+
+/* ============================ FEATURES ============================ */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);}
+.feat{
+  border-right:var(--bw) solid var(--ink);border-top:var(--bw) solid var(--ink);
+  padding:30px 26px 30px;min-height:248px;position:relative;
+  transition:background .16s ease;
+}
+.feat:nth-child(3n){border-right:none;}
+.feat:hover{background:var(--ink);color:var(--paper);}
+.feat:hover .feat-n{color:var(--acid);}
+.feat:hover .feat-desc{color:var(--paper-70);}
+.feat:hover .feat-tag{border-color:var(--acid);color:var(--acid);}
+.feat-n{font-family:var(--mono);font-size:13px;letter-spacing:.1em;color:var(--ink-40);}
+.feat-h{font-family:var(--display);text-transform:uppercase;font-size:30px;line-height:.95;margin:42px 0 0;letter-spacing:-.015em;font-feature-settings:'kern' 1;}
+.feat-h .acid{background:var(--acid);color:var(--ink);padding:.02em .12em .05em .08em;}
+.feat-desc{font-size:13.5px;line-height:1.5;color:var(--ink-70);margin-top:13px;font-weight:500;}
+.feat-tag{position:absolute;bottom:26px;left:26px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1.5px solid var(--ink-55);color:var(--ink-70);padding:3px 7px;}
+
+/* ============================ TRADERS ============================ */
+.tabs{display:flex;flex-wrap:wrap;gap:0;border-top:var(--bw) solid var(--ink);border-bottom:var(--bw) solid var(--ink);}
+.tab{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+  padding:14px 22px;border-right:var(--bw) solid var(--ink);cursor:pointer;color:var(--ink-55);
+  transition:background .14s ease,color .14s ease;background:var(--paper);
+}
+.tab:hover{color:var(--ink);}
+.tab.on{background:var(--acid);color:var(--ink);font-weight:700;}
+.tab .ct{color:var(--ink-40);margin-left:7px;}
+.tab.on .ct{color:var(--ink-70);}
+
+.trader-grid{display:grid;grid-template-columns:repeat(3,1fr);}
+.tcard{
+  border-right:var(--bw) solid var(--ink);border-bottom:var(--bw) solid var(--ink);
+  padding:22px 22px 20px;position:relative;background:var(--paper);
+  transition:background .15s ease;display:flex;flex-direction:column;
+}
+.tcard:nth-child(3n){border-right:none;}
+.tcard:hover{background:#fff;}
+.tcard.neg-card{background:#fbeef1;}
+.tcard-top{display:flex;align-items:center;gap:13px;}
+.avatar{
+  width:46px;height:46px;border:var(--bw) solid var(--ink);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;
+  background:var(--acid);
+}
+/* hard-edge brutalist corner block behind the monogram */
+.avatar::before{
+  content:'';position:absolute;right:0;bottom:0;width:18px;height:18px;background:var(--ink);
+}
+.avatar .mono-glyph{
+  font-family:var(--display);font-size:24px;line-height:1;color:var(--ink);
+  position:relative;z-index:1;text-transform:uppercase;letter-spacing:-.02em;
+}
+.tcard.neg-card .avatar{background:#fff;}
+.tcard.neg-card .avatar::before{background:var(--neg);}
+.tname{font-family:var(--grotesk);font-weight:800;font-size:17px;letter-spacing:-.01em;line-height:1.1;}
+.tmeta{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-55);margin-top:4px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+.venue-chip{border:1.5px solid var(--ink);padding:2px 5px;line-height:1;}
+.hide-chip{border:1.5px solid var(--neg);color:var(--neg);padding:2px 5px;line-height:1;}
+.pnl-block{margin-top:18px;border-top:2px solid var(--ink);padding-top:14px;}
+.pnl-lab{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-55);}
+.pnl-big{font-family:var(--display);font-size:41px;line-height:.92;letter-spacing:-.01em;margin-top:3px;}
+.pnl-big.up{color:var(--ink);}
+.pnl-big.up::before{content:'+';}
+.pnl-big.dn{color:var(--neg);}
+.pnl-unit{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink-55);margin-left:4px;}
+.tstats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:16px;border:1.5px solid var(--ink-12);}
+.tstat{padding:9px 10px;border-right:1.5px solid var(--ink-12);}
+.tstat:last-child{border-right:none;}
+.tstat .sl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-55);}
+.tstat .sv{font-family:var(--mono);font-weight:700;font-size:14px;margin-top:3px;}
+.tstat .sv.acid{background:var(--acid);display:inline-block;padding:0 3px;}
+.tcard-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:16px;}
+.spark{display:block;}
+.copy-btn{
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
+  background:var(--ink);color:var(--acid);border:var(--bw) solid var(--ink);padding:9px 14px;cursor:pointer;
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+.copy-btn:hover{transform:translate(-2px,-2px);box-shadow:3px 3px 0 var(--acid);}
+.tcard.neg-card .copy-btn{background:#fff;color:var(--ink);}
+
+/* ============================ DIFFERENTIATORS ============================ */
+.diff{display:grid;grid-template-columns:1fr 1fr;}
+.diff-cell{
+  padding:40px;border-top:var(--bw) solid var(--ink);border-right:var(--bw) solid var(--ink);position:relative;min-height:230px;
+}
+.diff-cell:nth-child(2n){border-right:none;}
+.diff-cell.invert{background:var(--ink);color:var(--paper);}
+.diff-cell.invert .diff-desc{color:var(--paper-70);}
+.diff-cell.acidcell{background:var(--acid);}
+.diff-num{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--ink-40);}
+.diff-cell.invert .diff-num{color:var(--paper-40);}
+.diff-h{font-family:var(--display);text-transform:uppercase;font-size:38px;line-height:.92;margin:18px 0 0;letter-spacing:-.005em;}
+.diff-cell.invert .diff-h .mk{color:var(--acid);}
+.diff-desc{font-size:14.5px;line-height:1.55;margin-top:14px;font-weight:500;color:var(--ink-70);max-width:440px;}
+.diff-cell.acidcell .diff-desc{color:var(--ink-70);}
+.big-stat{font-family:var(--display);font-size:120px;line-height:.8;letter-spacing:-.02em;position:absolute;right:30px;bottom:18px;opacity:.10;pointer-events:none;text-transform:uppercase;}
+
+/* ============================ PRICING ============================ */
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:var(--bw) solid var(--ink);}
+.pcol{border-right:var(--bw) solid var(--ink);padding:34px 30px 30px;display:flex;flex-direction:column;}
+.pcol:last-child{border-right:none;}
+.pcol.feature{background:var(--ink);color:var(--paper);}
+.pcol.feature .p-bullets li{color:var(--paper-70);}
+.p-tier{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-55);}
+.pcol.feature .p-tier{color:var(--acid);}
+.p-price{font-family:var(--display);text-transform:uppercase;font-size:clamp(46px,5.5vw,62px);line-height:.85;margin:18px 0 4px;letter-spacing:-.03em;font-feature-settings:'kern' 1;}
+.p-price .per{font-family:var(--mono);font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-55);}
+.pcol.feature .p-price .per{color:var(--paper-40);}
+.p-price.acid em{font-style:normal;background:var(--acid);color:var(--ink);padding:0 6px;}
+.p-note{font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--ink-55);min-height:18px;}
+.pcol.feature .p-note{color:var(--paper-40);}
+.p-bullets{list-style:none;margin:24px 0 28px;display:flex;flex-direction:column;gap:11px;flex:1;}
+.p-bullets li{font-size:13.5px;line-height:1.4;color:var(--ink-70);padding-left:24px;position:relative;font-weight:500;}
+.p-bullets li::before{content:'';position:absolute;left:0;top:4px;width:11px;height:11px;background:var(--acid);border:1.5px solid var(--ink);}
+.pcol.feature .p-bullets li::before{border-color:var(--paper);}
+.price-banner{
+  background:var(--acid);border-top:var(--bw) solid var(--ink);border-bottom:var(--bw) solid var(--ink);
+  padding:18px 40px;display:flex;align-items:center;justify-content:center;gap:14px;
+  font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
+}
+.price-banner .pill{background:var(--ink);color:var(--acid);padding:5px 10px;}
+
+/* ============================ FINAL CTA ============================ */
+.final{background:var(--ink);color:var(--paper);text-align:center;padding:84px 40px 78px;border-bottom:var(--bw) solid var(--ink);position:relative;overflow:hidden;}
+.final-h{font-family:var(--display);text-transform:uppercase;font-size:clamp(40px,9.5vw,92px);line-height:.86;letter-spacing:-.038em;font-feature-settings:'kern' 1;position:relative;z-index:2;}
+.final-h .hl{background:var(--acid);color:var(--ink);padding:.02em .16em .06em .11em;display:inline-block;box-shadow:6px 6px 0 var(--paper);letter-spacing:-.045em;
+  /* baseline shift gives the second line a designed, intentional drop */
+  margin-top:.06em;}
+.final-sub{font-size:16px;color:var(--paper-70);max-width:560px;margin:26px auto 0;position:relative;z-index:2;font-weight:500;}
+.final-cta{display:flex;gap:16px;justify-content:center;margin-top:36px;position:relative;z-index:2;}
+.final .btn.primary:hover{box-shadow:4px 4px 0 var(--paper);}
+.final-bg{position:absolute;inset:0;opacity:.07;z-index:1;}
+
+/* ============================ FOOTER ============================ */
+.footer{background:var(--paper);color:var(--ink);}
+.foot-top{max-width:1320px;margin:0 auto;padding:46px 40px 38px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;}
+.foot-brand .wordmark{font-size:28px;margin-bottom:18px;}
+.foot-brand p{font-size:13px;color:var(--ink-55);max-width:280px;line-height:1.5;font-weight:500;}
+.foot-col h5{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-40);margin-bottom:16px;}
+.foot-col a{display:block;font-size:13.5px;color:var(--ink-70);margin-bottom:11px;font-weight:500;}
+.foot-col a:hover{color:var(--ink);text-decoration:underline;text-decoration-color:var(--acid);text-underline-offset:3px;}
+.foot-status{border-top:var(--bw) solid var(--ink);border-bottom:var(--bw) solid var(--ink);}
+.foot-status-inner{max-width:1320px;margin:0 auto;padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:50px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-55);}
+.foot-status .grp{display:flex;align-items:center;gap:9px;}
+.sdot{width:8px;height:8px;background:var(--acid);border:1.5px solid var(--ink);border-radius:50%;animation:pulse 1.8s infinite;}
+.risk{max-width:1320px;margin:0 auto;padding:26px 40px 40px;}
+.risk p{font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--ink-40);letter-spacing:.02em;}
+.risk b{color:var(--ink-70);}
+.copyline{display:flex;justify-content:space-between;margin-top:18px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);}
+
+/* ============================ RESPONSIVE ============================ */
+@media (max-width:1024px){
+  .wrap, .nav-inner, .trust-inner, .foot-top, .foot-status-inner, .risk{padding-left:28px;padding-right:28px;}
+  /* hero stacks: copy first, matrix below */
+  .hero-grid{grid-template-columns:1fr;}
+  .hero-left{border-right:none;padding-right:0;padding-bottom:38px;}
+  .hero-right{border-top:var(--bw) solid var(--ink);}
+  .hero-sub{max-width:none;}
+  /* 3-col grids -> 2-col */
+  .feat-grid,.trader-grid,.price-grid,.badges{grid-template-columns:repeat(2,1fr);}
+  .feat:nth-child(3n){border-right:var(--bw) solid var(--ink);}
+  .feat:nth-child(2n){border-right:none;}
+  .tcard:nth-child(3n){border-right:var(--bw) solid var(--ink);}
+  .tcard:nth-child(2n){border-right:none;}
+  .pcol{border-right:none;border-bottom:var(--bw) solid var(--ink);}
+  .badge:last-child{border-right:var(--bw) solid var(--ink);}
+  .badge:nth-child(2n){border-right:none;}
+  .foot-top{grid-template-columns:1fr 1fr;gap:30px;}
+  .trust-row{grid-template-columns:1fr;}
+  .trust-lab{border-right:none;border-bottom:1px solid var(--paper-12);padding:16px 0;}
+}
+@media (max-width:680px){
+  .wrap, .nav-inner, .trust-inner, .foot-top, .foot-status-inner, .risk{padding-left:18px;padding-right:18px;}
+  .nav-links{gap:0;}
+  /* collapse nav to brand + primary CTA only on small screens */
+  .nav-links .navlink{display:none;}
+  .nav-cta-group{gap:0;}
+  .nav-cta-group .navlink{display:none;}
+  .btn.lg{padding:13px 18px;font-size:12px;}
+  /* everything single column */
+  .feat-grid,.trader-grid,.price-grid,.badges{grid-template-columns:1fr;}
+  .feat,.tcard{border-right:none !important;}
+  .feat:nth-child(2n){border-right:none;}
+  .badge{border-right:none !important;border-bottom:1px solid var(--ink-12);}
+  .diff{grid-template-columns:1fr;}
+  .diff-cell{border-right:none !important;padding:28px 20px;min-height:0;}
+  .diff-cell .big-stat{font-size:84px;}
+  .foot-top{grid-template-columns:1fr;}
+  .hero-left{padding-top:34px;}
+  .hero-cta-row{gap:12px;}
+  .sec-head{flex-direction:column;align-items:flex-start;gap:14px;}
+  .sec-desc{max-width:none;}
+  .final{padding:54px 20px 50px;}
+  .price-banner{flex-wrap:wrap;text-align:center;padding:16px 20px;font-size:12px;}
+  .foot-status-inner{flex-direction:column;height:auto;gap:6px;padding-top:12px;padding-bottom:12px;align-items:flex-start;}
+  .copyline{flex-direction:column;gap:8px;}
+  .tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;}
+  .tab{white-space:nowrap;}
+}
+
+/* reveal */
+.reveal{opacity:1;}
+@media (prefers-reduced-motion:no-preference){
+  .js .reveal{opacity:0;transform:translateY(14px);transition:opacity .55s ease, transform .55s ease;}
+  .js .reveal.in{opacity:1;transform:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================ NAV ============================ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="wordmark"><span class="mk">COPY</span><span class="mk2">TRADER</span></a>
+    <div class="nav-links">
+      <a class="navlink" href="#features">Features</a>
+      <a class="navlink" href="#traders">Traders</a>
+      <a class="navlink" href="#pricing">Pricing</a>
+      <a class="navlink" href="#docs">Docs</a>
+      <div class="nav-cta-group">
+        <a class="navlink" href="#login">Login</a>
+        <a class="btn primary" href="#pricing">Start 7-Day Trial</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================ HERO ============================ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <!-- LEFT -->
+      <div class="hero-left">
+        <div class="hero-ribbon">
+          <span><span class="dot" aria-hidden="true"></span><span class="blink">SIGNAL FEED LIVE</span></span>
+          <span style="margin-left:auto;">UTC <span id="navClock" class="blink num">--:--:--</span></span>
+        </div>
+        <h1 class="hero-h1 tighten">
+          <span class="row out">COPY THE</span>
+          <span class="row"><span class="hl">SIGNAL.</span></span>
+          <span class="row">KEEP THE</span>
+          <span class="row"><span class="hl">PROFIT.</span></span>
+        </h1>
+        <p class="hero-sub">
+          跨 <b>5 大交易所</b> 执行、<b>6 类信号源</b> 聚合的加密合约智能跟单。
+          <b>毫秒级</b> 镜像下单，<b>零分润</b> — 盈利 100% 归你，只付月租。
+          隐藏持仓、私域带单、满员、未上架，照跟不误。
+        </p>
+        <div class="hero-cta-row">
+          <a class="btn primary lg" href="#pricing">Start 7-Day Trial →</a>
+          <a class="btn lg" href="#traders">浏览交易员广场</a>
+          <span class="hero-fine">无需信用卡 · 即开即用</span>
+        </div>
+        <div class="badges">
+          <div class="badge">
+            <div class="bnum"><em>&lt;2</em>MS</div>
+            <div class="blabel">执行延迟 / Execution</div>
+          </div>
+          <div class="badge">
+            <div class="bnum">5×6</div>
+            <div class="blabel">交易所 · 信号源</div>
+          </div>
+          <div class="badge">
+            <div class="bnum"><em>0%</em></div>
+            <div class="blabel">分润 · 盈利全留</div>
+          </div>
+        </div>
+      </div>
+      <!-- RIGHT : SIGNAL MATRIX -->
+      <div class="hero-right">
+        <div class="matrix-head">
+          <span>SIGNAL MATRIX / 实时信号矩阵</span>
+          <span id="matrixCount" class="sim-tag">SIMULATED FEED</span>
+        </div>
+        <canvas id="signalMatrix" width="520" height="430" role="img" aria-label="信号矩阵可视化（模拟示意）" aria-hidden="true"></canvas>
+        <div class="matrix-foot">
+          <span>FILLS <span class="lv num" id="fillCount">0</span></span>
+          <span>NET PnL <span class="lv num" id="netPnl">+0.00</span></span>
+          <span>LAT <span class="lv num">1.8MS</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============================ TICKER ============================ -->
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<!-- ============================ TRUST BAND ============================ -->
+<section class="trust">
+  <div class="trust-inner">
+    <div class="trust-row">
+      <div class="trust-lab">5 EXCHANGES / 执行</div>
+      <div class="trust-items">
+        <div class="it">Binance <span class="badge-sm">FUTURES</span></div>
+        <div class="it">OKX <span class="badge-sm">PERP</span></div>
+        <div class="it">Gate.io <span class="badge-sm">PERP</span></div>
+        <div class="it">Bitget <span class="badge-sm">MIX</span></div>
+        <div class="it">Hyperliquid <span class="badge-sm">ON-CHAIN</span></div>
+      </div>
+    </div>
+    <div class="trust-row">
+      <div class="trust-lab">6 SIGNALS / 信号源</div>
+      <div class="trust-items">
+        <div class="it">币安带单</div>
+        <div class="it">链上聪明钱</div>
+        <div class="it">欧易带单</div>
+        <div class="it">Bitget</div>
+        <div class="it">币Coin</div>
+        <div class="it">Hyperliquid</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ FEATURES ============================ -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="idx">[ 01 / FEATURES ]</div>
+        <h2 class="sec-title tighten">执行栈<br><span class="acid">EXECUTION STACK</span></h2>
+      </div>
+      <p class="sec-desc">不是 webhook 转发，是一套为毫秒级镜像下单设计的信号执行基础设施。六大能力，每一项都为「跟得上、跟得准、跟得稳」而生。</p>
+    </div>
+  </div>
+  <div class="wrap" style="padding-left:0;padding-right:0;">
+  <div class="feat-grid">
+    <div class="feat reveal">
+      <div class="feat-n">F-01</div>
+      <h3 class="feat-h">六大<span class="acid">信号源</span><br>聚合</h3>
+      <p class="feat-desc">币安 / 欧易 / Bitget 带单、链上聪明钱、币Coin、Hyperliquid。一处订阅，全域信号统一进入执行队列。</p>
+      <span class="feat-tag">UNIFIED FEED</span>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-n">F-02</div>
+      <h3 class="feat-h">20+<br><span class="acid">跟单参数</span></h3>
+      <p class="feat-desc">固定 / 全仓 / 复利三种资金模式，倍率、方向限制、限价触发、循环止盈止损、安全垫、黑白名单——全可调。</p>
+      <span class="feat-tag">PRECISION CONFIG</span>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-n">F-03</div>
+      <h3 class="feat-h">多账号<br><span class="acid">独立出口IP</span></h3>
+      <p class="feat-desc">PRO 起 4 账户并行，每账户绑定独立出口 IP，规避同源风控，多策略隔离运行互不影响。</p>
+      <span class="feat-tag">EGRESS ISOLATION</span>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-n">F-04</div>
+      <h3 class="feat-h"><span class="acid">风控</span><br>引擎</h3>
+      <p class="feat-desc">跟单亏损阈值、安全垫倍数、单笔/单日上限、触发风控自动停跟。预设规则在执行层硬拦截，不靠人盯盘。</p>
+      <span class="feat-tag">RISK GUARD</span>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-n">F-05</div>
+      <h3 class="feat-h">链上<br><span class="acid">聪明钱</span></h3>
+      <p class="feat-desc">多链监控聪明钱地址持仓与开平动作，将链上行为映射为可执行的合约跟单信号——CEX 之外的 alpha。</p>
+      <span class="feat-tag">ON-CHAIN ALPHA</span>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-n">F-06</div>
+      <h3 class="feat-h"><span class="acid">归因</span><br>分析</h3>
+      <p class="feat-desc">Sharpe / Calmar / MAR 全套风险调整收益指标，逐交易员、逐策略归因，让你的资金配置有据可依。</p>
+      <span class="feat-tag">ATTRIBUTION</span>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ============================ TRADERS ============================ -->
+<section class="sec" id="traders">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="idx">[ 02 / TRADER SQUARE ]</div>
+        <h2 class="sec-title tighten">交易员<span class="acid">广场</span></h2>
+      </div>
+      <p class="sec-desc">真实上架交易员榜单。点击「启动跟单」即按你的参数镜像执行。我们不藏负样本——下方含一个真实亏损交易员，诚实是合规的起点。</p>
+    </div>
+  </div>
+  <div class="wrap" style="padding:0;">
+    <div class="tabs" id="signalTabs">
+      <div class="tab on" data-f="all">全部<span class="ct">06</span></div>
+      <div class="tab" data-f="binance">币安带单<span class="ct">02</span></div>
+      <div class="tab" data-f="smart">链上聪明钱<span class="ct">—</span></div>
+      <div class="tab" data-f="okx">欧易带单<span class="ct">03</span></div>
+      <div class="tab" data-f="bitget">Bitget<span class="ct">—</span></div>
+      <div class="tab" data-f="bicoin">币Coin<span class="ct">04</span></div>
+      <div class="tab" data-f="hyper">Hyperliquid<span class="ct">—</span></div>
+    </div>
+    <div class="trader-grid" id="traderGrid"></div>
+  </div>
+</section>
+
+<!-- ============================ DIFFERENTIATORS ============================ -->
+<section class="sec" id="why">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="idx">[ 03 / WHY COPY TRADER ]</div>
+        <h2 class="sec-title tighten">设计<span class="acid">原理</span></h2>
+      </div>
+      <p class="sec-desc">四个不妥协的产品决定。它们解释了为什么技术型交易者选择把账户托付给我们的执行栈。</p>
+    </div>
+  </div>
+  <div class="wrap" style="padding:0;">
+    <div class="diff">
+      <div class="diff-cell acidcell reveal">
+        <div class="diff-num">P-01</div>
+        <h3 class="diff-h">Hyperliquid<br>一等公民</h3>
+        <p class="diff-desc">不是「也支持」，而是原生集成链上订单簿，将 Hyperliquid 永续作为头等执行场所——低延迟下单、链上仓位实时映射。</p>
+        <div class="big-stat">HL</div>
+      </div>
+      <div class="diff-cell invert reveal">
+        <div class="diff-num">P-02</div>
+        <h3 class="diff-h">零分润<br><span class="mk">盈利全留</span></h3>
+        <p class="diff-desc">同行抽 10–20% 利润分成；我们只收固定月租。你赚得越多，省得越多——月租之外，一分不抽。</p>
+        <div class="big-stat" style="color:var(--acid);opacity:.16;">0%</div>
+      </div>
+      <div class="diff-cell reveal">
+        <div class="diff-num">P-03</div>
+        <h3 class="diff-h">Self-Host<br>自托管</h3>
+        <p class="diff-desc">INSTITUTIONAL 档支持私有部署：你的 API Key、出口 IP、执行日志全在自己机房，优先 RPC + 专属风控策略。</p>
+        <div class="big-stat">SELF</div>
+      </div>
+      <div class="diff-cell invert reveal">
+        <div class="diff-num">P-04</div>
+        <h3 class="diff-h"><span class="mk">跨链</span><br>聪明钱</h3>
+        <p class="diff-desc">多链监控聪明钱地址，把链上真金白银的开平仓行为，转译成你能在 CEX/DEX 同步执行的合约信号。</p>
+        <div class="big-stat" style="color:var(--acid);opacity:.16;">XC</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PRICING ============================ -->
+<section class="sec" id="pricing" style="border-bottom:none;">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="idx">[ 04 / PRICING ]</div>
+        <h2 class="sec-title tighten">定价<span class="acid">PRICING</span></h2>
+      </div>
+      <p class="sec-desc">零分润 · 月租订阅 · 7 天免费试用。盈利全部归你，定价透明到没有星号。</p>
+    </div>
+  </div>
+  <div class="wrap" style="padding:0;">
+    <div class="price-grid">
+      <div class="pcol reveal">
+        <div class="p-tier">TRIAL</div>
+        <div class="p-price">FREE<span class="per"> / 7 DAYS</span></div>
+        <div class="p-note">7 天后转月租，不自动扣费</div>
+        <ul class="p-bullets">
+          <li>1 个交易账户</li>
+          <li>1 个跟单名额</li>
+          <li>标准执行速度</li>
+          <li>核心信号源接入</li>
+          <li>基础风控规则</li>
+        </ul>
+        <a class="btn lg" href="#" style="text-align:center;">开始试用</a>
+      </div>
+      <div class="pcol feature reveal">
+        <div class="p-tier">PRO · 最受欢迎</div>
+        <div class="p-price acid"><em>$80</em><span class="per"> /MO</span></div>
+        <div class="p-note">月租订阅 · 0 分润 · 盈利全留</div>
+        <ul class="p-bullets">
+          <li>4 个交易账户并行</li>
+          <li>多个跟单名额</li>
+          <li>极速跟单 &lt;2ms</li>
+          <li>独立出口 IP · 每账户隔离</li>
+          <li>全部 6 类信号源</li>
+          <li>归因分析 Sharpe / Calmar / MAR</li>
+        </ul>
+        <a class="btn primary lg" href="#" style="text-align:center;">选择 PRO →</a>
+      </div>
+      <div class="pcol reveal">
+        <div class="p-tier">INSTITUTIONAL</div>
+        <div class="p-price">CUSTOM</div>
+        <div class="p-note">面向团队 · 带单方 · 机构</div>
+        <ul class="p-bullets">
+          <li>不限账户数量</li>
+          <li>带单员资格 / 信号发布</li>
+          <li>Self-Host 自托管部署</li>
+          <li>优先 RPC 节点</li>
+          <li>专属风控策略</li>
+          <li>专属客户成功支持</li>
+        </ul>
+        <a class="btn ink lg" href="#" style="text-align:center;">联系销售</a>
+      </div>
+    </div>
+  </div>
+  <div class="price-banner">
+    <span class="pill">0% 分润</span>
+    盈利全留
+    <span class="pill">邀请返佣 10%</span>
+    受邀首月半价
+  </div>
+</section>
+
+<!-- ============================ FINAL CTA ============================ -->
+<section class="final">
+  <canvas class="final-bg" id="finalBg" width="1440" height="500" aria-hidden="true"></canvas>
+  <h1 class="final-h tighten">DON'T COPY THE NOISE.<br><span class="hl">COPY THE SIGNAL.</span></h1>
+  <p class="final-sub">7 天免费试用，无需信用卡。接入你的第一个交易所账户，订阅一位真实交易员，看毫秒级镜像下单如何运作。</p>
+  <div class="final-cta">
+    <a class="btn primary lg" href="#pricing">Start 7-Day Trial →</a>
+    <a class="btn lg" style="background:transparent;color:var(--paper);border-color:var(--paper);" href="#docs">阅读 Docs</a>
+  </div>
+</section>
+
+<!-- ============================ FOOTER ============================ -->
+<footer class="footer">
+  <div class="foot-status">
+    <div class="foot-status-inner">
+      <div class="grp"><span class="sdot" aria-hidden="true"></span>ALL SYSTEMS OPERATIONAL · 99.98% UPTIME</div>
+      <div class="grp">UTC <span id="footClock" class="num">--:--:--</span> · LATENCY 1.8MS · WS 1 247 SUB</div>
+    </div>
+  </div>
+  <div class="foot-top">
+    <div class="foot-brand">
+      <a href="#" class="wordmark"><span class="mk">COPY</span><span class="mk2">TRADER</span></a>
+      <p>跨交易所 · 跨数据源的加密合约智能跟单。毫秒级执行，零分润订阅，合规优先。</p>
+    </div>
+    <div class="foot-col">
+      <h5>Product</h5>
+      <a href="#features">Features</a>
+      <a href="#traders">交易员广场</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#why">设计原理</a>
+    </div>
+    <div class="foot-col">
+      <h5>Resources</h5>
+      <a href="#docs">Docs</a>
+      <a href="#">API 参考</a>
+      <a href="#">Self-Host 指南</a>
+      <a href="#">系统状态</a>
+    </div>
+    <div class="foot-col">
+      <h5>Company</h5>
+      <a href="#">关于</a>
+      <a href="#">合规</a>
+      <a href="#">隐私政策</a>
+      <a href="#">联系销售</a>
+    </div>
+  </div>
+  <div class="risk">
+    <p><b>风险提示 / RISK DISCLOSURE：</b>加密货币合约交易具有极高风险，价格剧烈波动可能导致全部本金损失，杠杆会放大盈亏。历史业绩与回测数据不代表未来收益，跟单不构成投资建议。Copy Trader 仅提供执行与信号聚合工具，不托管资金、不保证盈利。请在充分理解风险并符合所在司法辖区法规的前提下使用。负样本数据真实展示，盈亏自负。</p>
+    <p style="margin-top:12px;"><b>示意数据 / ILLUSTRATIVE：</b>页面内信号矩阵（标注 SIMULATED FEED）及实时状态指标——执行延迟 1.8MS、99.98% UPTIME、WS 1 247 SUB——为产品示意，非实时承诺或服务等级保证（SLA）。实际表现以接入后的真实运行数据为准。</p>
+    <div class="copyline">
+      <span>© 2026 COPY TRADER · SIGNAL BRUTALISM EDITION</span>
+      <span>BTC $74 180 · F&amp;G INDEX 22 极度恐慌</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+document.documentElement.classList.add('js');
+
+/* ---------- helpers ---------- */
+function fmtNum(n){
+  var neg = n < 0; n = Math.abs(n);
+  var s = n.toFixed(2);
+  var parts = s.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return (neg ? '-' : '') + parts.join('.');
+}
+
+/* ---------- clocks ---------- */
+function tick(){
+  var d = new Date();
+  var hh = String(d.getUTCHours()).padStart(2,'0');
+  var mm = String(d.getUTCMinutes()).padStart(2,'0');
+  var ss = String(d.getUTCSeconds()).padStart(2,'0');
+  var str = hh+':'+mm+':'+ss;
+  ['navClock','footClock'].forEach(function(id){var e=document.getElementById(id);if(e)e.textContent=str;});
+}
+setInterval(tick,1000); tick();
+
+/* ---------- ticker ---------- */
+(function(){
+  var items = [
+    {k:'BTC',v:'$74 180',c:'dn',d:'-1.97%'},
+    {k:'F&G INDEX',v:'22',c:'dn',d:'极度恐慌'},
+    {k:'24H LIQUIDATIONS',v:'$2.89亿',c:'dn',d:''},
+    {k:'BTC FUNDING',v:'+0.010%',c:'up',d:'正常'},
+    {k:'L/S RATIO',v:'1.69',c:'up',d:'多头居多'},
+    {k:'EXEC LATENCY',v:'1.8ms',c:'up',d:''},
+    {k:'WS SUBS',v:'1 247',c:'up',d:''},
+    {k:'NET FILLS 24H',v:'38 904',c:'up',d:''}
+  ];
+  function row(){
+    return items.map(function(it){
+      return '<span class="ti"><span class="k">'+it.k+'</span><span class="'+it.c+'">'+it.v+'</span>'+(it.d?'<span class="k">'+it.d+'</span>':'')+'</span>';
+    }).join('');
+  }
+  document.getElementById('tickerTrack').innerHTML = row()+row();
+})();
+
+/* ---------- SIGNAL MATRIX (hero generative art) ---------- */
+(function(){
+  var cv = document.getElementById('signalMatrix');
+  if(!cv) return;
+  var ctx = cv.getContext('2d');
+  var W = cv.width, H = cv.height;
+  var INK = '#0A0A0A', PAPER = '#F2F0EA', ACID = '#D6FF3D', NEG = '#FF2E63';
+  // grid driven by real-ish trade magnitudes (seeded from real PnL set)
+  var seedPnls = [1343829.94,1927532.79,297089.72,408565.96,365404.77,-319.96,-102513.70,53.51];
+  var cols = 16, rows = 18;
+  var cw = W/cols, ch = H/rows;
+  // deterministic field
+  var field = [];
+  var seed = 1337;
+  function rnd(){ seed = (seed*1103515245+12345) & 0x7fffffff; return seed/0x7fffffff; }
+  for(var y=0;y<rows;y++){ field[y]=[]; for(var x=0;x<cols;x++){
+    var base = seedPnls[(x*rows+y)%seedPnls.length];
+    var n = Math.sin(x*0.55)*Math.cos(y*0.42) + rnd()*0.9;
+    field[y][x] = { mag: n, neg: base < 0 && rnd()>0.55, phase: rnd()*Math.PI*2, speed: 0.6+rnd()*1.8 };
+  }}
+  var frame=0;
+  var fillEl = document.getElementById('fillCount');
+  var netEl = document.getElementById('netPnl');
+  // deterministic replay: cumulative fills + net PnL stepped from the real seed set,
+  // loops cleanly — no Math.random(), so the "feed" is honest demo data, not invented metrics.
+  var fillStep = [2,1,3,1,2,1,2,3];               // fills added per beat (fixed)
+  var netStep  = [180.50,-92.30,326.10,41.75,-58.20,212.40,-130.66,97.85]; // net delta per beat
+  var beat = 0, fills = 0, net = 0;
+  function draw(){
+    frame++;
+    ctx.fillStyle = INK; ctx.fillRect(0,0,W,H);
+    var tt = frame*0.018;
+    for(var y=0;y<rows;y++) for(var x=0;x<cols;x++){
+      var c = field[y][x];
+      var a = (Math.sin(tt*c.speed + c.phase) + 1)/2; // 0..1
+      var v = (c.mag + 1)/2 * a;
+      var cx = x*cw + cw/2, cy = y*ch + ch/2;
+      // hairline grid dot
+      if(v > 0.62){
+        // active node
+        var col = c.neg ? NEG : ACID;
+        ctx.fillStyle = col;
+        var s = 3 + v*7;
+        ctx.fillRect(cx - s/2, cy - s/2, s, s);
+        // connecting tick to right neighbor sometimes
+        if(x<cols-1 && a>0.8){
+          ctx.strokeStyle = col; ctx.globalAlpha = 0.5; ctx.lineWidth=1;
+          ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo((x+1)*cw+cw/2,cy); ctx.stroke();
+          ctx.globalAlpha=1;
+        }
+      } else if(v > 0.32){
+        ctx.fillStyle = 'rgba(242,240,234,0.20)';
+        ctx.fillRect(cx-1.5, cy-1.5, 3, 3);
+      } else {
+        ctx.fillStyle = 'rgba(242,240,234,0.07)';
+        ctx.fillRect(cx-1, cy-1, 2, 2);
+      }
+    }
+    // scanning column highlight
+    var sc = (frame % (cols*8)) / 8;
+    ctx.fillStyle = 'rgba(214,255,61,0.06)';
+    ctx.fillRect(Math.floor(sc)*cw, 0, cw, H);
+    // counters — deterministic stepped replay (loops, no random)
+    if(frame % 12 === 0){
+      fills += fillStep[beat % fillStep.length];
+      net   += netStep[beat % netStep.length];
+      beat++;
+      // loop the demo window so numbers stay in a believable range
+      if(beat % 64 === 0){ fills = 0; net = 0; }
+      if(fillEl) fillEl.textContent = fmtNum(fills).replace('.00','');
+      if(netEl){ netEl.textContent = (net>=0?'+':'')+fmtNum(net); netEl.style.color = net>=0 ? ACID : NEG; }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ---------- final CTA background dot field ---------- */
+(function(){
+  var cv = document.getElementById('finalBg');
+  if(!cv) return;
+  var ctx = cv.getContext('2d');
+  var W=cv.width,H=cv.height;
+  function render(){
+    ctx.clearRect(0,0,W,H);
+    var step=26;
+    for(var y=step/2;y<H;y+=step) for(var x=step/2;x<W;x+=step){
+      var d = Math.sin((x+y)/120 + Date.now()/1400);
+      var s = 1 + (d+1)*1.6;
+      ctx.fillStyle = '#D6FF3D';
+      ctx.fillRect(x-s/2,y-s/2,s,s);
+    }
+    requestAnimationFrame(render);
+  }
+  render();
+})();
+
+/* ---------- TRADERS ---------- */
+var TRADERS = [
+  {name:'茂茂大魔王', venue:'OKX', source:['okx','bicoin'], pnl:1343829.94, pos:true, roi:'+14539.61%', win:'34.40%', dd:'2.57%', days:2209, scale:'7 618.91', hide:false},
+  {name:'风火山林Trader', venue:'Binance', source:['binance','bicoin'], pnl:1927532.79, pos:true, roi:'+6880.06%', win:'45.45%', dd:'6.86%', days:1705, scale:'89 999.16', hide:false},
+  {name:'牛的青山在', venue:'OKX', source:['okx','bicoin'], pnl:297089.72, pos:true, roi:'+10326.49%', win:'75.00%', dd:'1.15%', days:899, scale:'13 292.43', hide:false},
+  {name:'寒星日照', venue:'OKX', source:['okx','bicoin'], pnl:408565.96, pos:true, roi:'+343.37%', win:'43.33%', dd:'14.51%', days:1218, scale:'138 001.32', hide:false},
+  {name:'KNOTMAIN', venue:'Binance', source:['binance'], pnl:365404.77, pos:true, roi:'+53.51% (90d)', win:'57.83%', dd:'13.32%', days:'—', scale:'SHARPE 3.20', hide:true},
+  {name:'MaximizeSR', venue:'Binance', source:['binance'], pnl:-319.96, pos:false, roi:'-6.03% (90d)', win:'51.29%', dd:'9.15%', days:653, scale:'SHARPE 0.06', hide:true}
+];
+
+function monogram(name){
+  // local, zero-dependency brutalist monogram: first CJK/Latin glyph of the trader name.
+  // Latin names -> first letter; CJK names -> first character. No external API.
+  var ch = (name || '?').trim().charAt(0).toUpperCase();
+  return '<div class="avatar" aria-hidden="true"><span class="mono-glyph">'+ch+'</span></div>';
+}
+function sparkSvg(pos){
+  // 88x26 deterministic micro path
+  var pts=[], n=14, h=26, w=88, seed=pos?7:3;
+  var v=12;
+  var arr=[];
+  for(var i=0;i<n;i++){ seed=(seed*9301+49297)%233280; var r=seed/233280; v += (r-0.42)*(pos?5:6)* (pos? (i/n+0.3):1); arr.push(v); }
+  var mn=Math.min.apply(null,arr), mx=Math.max.apply(null,arr), rng=(mx-mn)||1;
+  for(var i=0;i<n;i++){ var x=(i/(n-1))*w; var yy=h-2 - ((arr[i]-mn)/rng)*(h-4); pts.push(x.toFixed(1)+','+yy.toFixed(1)); }
+  var col = pos ? '#0A0A0A' : '#FF2E63';
+  return '<svg class="spark" width="88" height="26" viewBox="0 0 88 26" aria-hidden="true"><polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2"/></svg>';
+}
+
+function renderTraders(filter){
+  var grid = document.getElementById('traderGrid');
+  var list = TRADERS.filter(function(t){ return filter==='all' || t.source.indexOf(filter)>=0; });
+  if(list.length===0){
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:60px 22px;border-bottom:var(--bw) solid var(--ink);font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-55);">// 该信号源暂无上架交易员 — 试用期内将持续接入更多带单方</div>';
+    return;
+  }
+  grid.innerHTML = list.map(function(t){
+    var neg = !t.pos;
+    var pnlClass = neg ? 'dn' : 'up';
+    var pnlDisp = (neg?'':'')+fmtNum(t.pnl);
+    return ''+
+    '<div class="tcard'+(neg?' neg-card':'')+'">'+
+      '<div class="tcard-top">'+
+        monogram(t.name)+
+        '<div><div class="tname">'+t.name+'</div>'+
+          '<div class="tmeta"><span class="venue-chip">'+t.venue+'</span>'+
+          (t.hide?'<span class="hide-chip">隐藏持仓</span>':'')+
+          '<span>'+(t.days==='—'?'入驻 —':'入驻 '+t.days+'天')+'</span></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="pnl-block">'+
+        '<div class="pnl-lab">'+(t.hide?'90D 盈亏 / USDT':'总盈亏 / USDT')+'</div>'+
+        '<div class="pnl-big '+pnlClass+'">'+pnlDisp+'<span class="pnl-unit"></span></div>'+
+      '</div>'+
+      '<div class="tstats">'+
+        '<div class="tstat"><div class="sl">收益率</div><div class="sv'+(neg?'':' acid')+'">'+t.roi+'</div></div>'+
+        '<div class="tstat"><div class="sl">胜率</div><div class="sv">'+t.win+'</div></div>'+
+        '<div class="tstat"><div class="sl">回撤</div><div class="sv">'+t.dd+'</div></div>'+
+      '</div>'+
+      '<div class="tcard-foot">'+
+        sparkSvg(t.pos)+
+        '<button class="copy-btn">'+(neg?'查看详情':'启动跟单 →')+'</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  // pad to multiple of 3 with empty cells for clean grid borders
+  var rem = (3 - (list.length % 3)) % 3;
+  for(var i=0;i<rem;i++){
+    var pad = document.createElement('div');
+    pad.className='tcard';
+    pad.style.background='var(--paper)';
+    pad.style.minHeight='1px';
+    pad.innerHTML='<div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-40);height:100%;display:flex;align-items:flex-end;">// MORE SIGNALS COMING</div>';
+    grid.appendChild(pad);
+  }
+}
+renderTraders('all');
+
+document.querySelectorAll('#signalTabs .tab').forEach(function(tab){
+  tab.addEventListener('click', function(){
+    document.querySelectorAll('#signalTabs .tab').forEach(function(t){t.classList.remove('on');});
+    tab.classList.add('on');
+    renderTraders(tab.getAttribute('data-f'));
+    document.querySelectorAll('#traderGrid .tcard').forEach(function(c){c.classList.add('reveal','in');});
+  });
+});
+
+/* ---------- reveal on scroll ---------- */
+(function(){
+  if(!('IntersectionObserver' in window)){ document.querySelectorAll('.reveal').forEach(function(e){e.classList.add('in');}); return; }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+  }, {threshold:0.12});
+  document.querySelectorAll('.reveal').forEach(function(e){io.observe(e);});
+  // safety: force-show after 2.5s in case observer never fires (static screenshot)
+  setTimeout(function(){ document.querySelectorAll('.reveal').forEach(function(e){e.classList.add('in');}); }, 2500);
+})();
+</script>
+</body>
+</html>

@@ -2,12 +2,22 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
+  // Marketing site (light INSTITUTIONAL CLARITY layout)
+  {
+    path: '/',
+    component: () => import('@/views/public/MarketingLayout.vue'),
+    meta: { marketing: true },
+    children: [
+      { path: '', name: 'home', component: () => import('@/views/home/Home.vue') },
+      { path: 'features', name: 'features', component: () => import('@/views/features/Features.vue') },
+      { path: 'pricing', name: 'pricing', component: () => import('@/views/pricing/Pricing.vue') }
+    ]
+  },
   // Public site (shared dark space layout)
   {
     path: '/',
     component: () => import('@/views/public/PublicLayout.vue'),
     children: [
-      { path: '', name: 'home', component: () => import('@/views/home/Home.vue') },
       { path: 'invite', name: 'invite', component: () => import('@/views/invite/Invite.vue') },
       { path: 'shop', name: 'shop', component: () => import('@/views/shop/Shop.vue') },
       { path: 'wallet', name: 'wallet', component: () => import('@/views/wallet/Wallet.vue') },

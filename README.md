@@ -26,7 +26,7 @@
 | 链上 | **web3.py 6 + Alchemy/Infura/Hyperliquid RPC** | 多 RPC fallback |
 | WS | **websockets + aiohttp** | |
 | 鉴权 | **JWT + bcrypt + TOTP（2FA 可选）** | |
-| 前端 | **Vue 3 + TypeScript + Element Plus + Vite + Pinia + ECharts** | 现代金融控制台栈 |
+| 前端 | **Vue 3 + TypeScript + Element Plus + Vite + Pinia + ECharts + vue-i18n** | 双主题：营销站 Swiss 亮色 / 控制台 D1 终端暗色；中英双语 |
 | 部署 | **Docker Compose（开发）→ K8s + Helm（生产）** | |
 | 监控 | **Prometheus + Grafana + Loki** | |
 | 通知 | **aiogram (TG) + email + WeChat WorkPush + Twilio** | |
@@ -95,10 +95,19 @@ copy_trader/
 - 软件更新（每账户独立服务实例）
 
 ### D. UI 页面
-- 公开站：首页 / 推广返佣 / 商城 / 钱包 / 个人中心 / 使用教程
+- 公开营销站（亮色 Swiss 设计 · 中英双语）：首页 / 功能 Features / 定价 Pricing ｜ 推广返佣 / 商城 / 钱包 / 个人中心 / 使用教程
 - 控制台：Dashboard / 账户管理 / 交易员广场 / 交易所自选 / 币Coin自选 / 持仓详情 / 系统控制
 - 跟单配置弹窗（20+ 参数）
 - 持仓详情（持仓列表/操作记录/跟单分析 + 一键全平）
+
+### E. 前端设计与体验
+
+- **双主题架构**：公开营销站采用 **Institutional Clarity**（Swiss Editorial 亮色：纸白 + process orange `#FF4D00` + Inter Tight / Newsreader / Geist Mono）；登录后控制台沿用 **D1 Bloomberg Terminal**（石墨黑 + 琥珀 `#FFB400` + JetBrains Mono）。亮色主题作用域锁定 `.marketing-site`，与暗色控制台严格隔离（`:root` / `tokens.css` / `global.css` / `main.ts` dark 逻辑零改动）。
+- **公开营销站**：Home（落地页）/ Features（功能深页）/ Pricing（定价页），由 `MarketingLayout` 提供共享导航与页脚。
+- **中英双语 i18n**：vue-i18n（默认中文，可切英文），导航内置语言切换器，`<html lang>` 随 locale 同步；Element Plus 组件文案随之联动；CJK 字体兜底保证中文巨号标题不出豆腐块。
+- **响应式**：移动端 / 平板 / 桌面全适配（巨号标题 `clamp()` 流体字号，定价对比矩阵窄屏转堆叠卡）。
+- **数据**：营销页交易员榜单经 `usePublicTraders` 接 API，mock 种子打底 + 静默失败回退，后端接通即走真数据。
+- **设计探索资产**：`design/marketing/` 保留 3 套差异化方向高保真原型（velocity / clarity / brutal）+ 5 维评审 + 截图。
 
 ## 六、里程碑（Roadmap）
 
