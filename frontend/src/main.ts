@@ -9,6 +9,7 @@ import router from './router'
 import { i18n } from './i18n'
 import { registerBloombergTheme } from './charts/echartsTheme'
 import './styles/global.css'
+import './styles/marketing.css'
 
 // Force terminal dark mode
 document.documentElement.classList.add('dark')

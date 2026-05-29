@@ -1,6 +1,24 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+/**
+ * Per-request opt-out metadata. `silent: true` suppresses the global
+ * ElMessage.error toast on failure — used by public (unauthenticated) pages
+ * that degrade gracefully instead of surfacing backend errors to visitors.
+ * Augmenting axios v1's config types lets `{ meta: { silent } }` pass tsc.
+ */
+declare module 'axios' {
+  interface RequestMeta {
+    silent?: boolean
+  }
+  interface AxiosRequestConfig {
+    meta?: RequestMeta
+  }
+  interface InternalAxiosRequestConfig {
+    meta?: RequestMeta
+  }
+}
+
 export const useMock = (): boolean => import.meta.env.VITE_USE_MOCK === 'true'
 
 const raw = axios.create({
@@ -25,6 +43,8 @@ raw.interceptors.response.use(
     if (status === 401) {
       localStorage.removeItem('token')
       if (location.pathname.startsWith('/console')) location.href = '/login'
+    } else if (err.config?.meta?.silent) {
+      // Public pages opt out of the toast and handle failure themselves.
     } else {
       ElMessage.error(typeof msg === 'string' ? msg : '请求失败')
     }

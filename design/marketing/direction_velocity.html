@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="velocity">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Copy Trader — 链上速度 · 毫秒级跨所跟单</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+<style>
+/* ============ ONCHAIN VELOCITY · Motion Poetics ============ */
+:root{
+  --bg:#08090E;
+  --bg-2:#0C0E15;
+  --bg-3:#10131C;
+  --panel:#0E111A;
+  --line:rgba(255,255,255,0.07);
+  --line-2:rgba(255,255,255,0.12);
+  --acc:#3DDC97;          /* electric mint — the single current color */
+  --acc-deep:#1FA873;
+  --acc-glow:rgba(61,220,151,0.55);
+  --acc-soft:rgba(61,220,151,0.10);
+  --pos:#3DDC97;
+  --neg:#FF5C72;
+  --txt:#EDF1F4;
+  --txt-2:#9AA4B2;
+  --txt-3:#5C6675;
+  --txt-4:#3A424E;
+  --mono:'Space Mono','JetBrains Mono',ui-monospace,monospace;
+  --disp:'Space Grotesk','Inter',system-ui,sans-serif;
+  --body:'Inter',system-ui,-apple-system,sans-serif;
+  --maxw:1200px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+body::before{ /* faint vertical vignette for cinematic depth */
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(61,220,151,0.06), transparent 55%),
+    radial-gradient(90% 90% at 100% 0%, rgba(61,220,151,0.04), transparent 60%);
+}
+::selection{background:var(--acc);color:#04130C}
+a{color:inherit;text-decoration:none}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1}
+.pos{color:var(--pos)}
+.neg{color:var(--neg)}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px;position:relative;z-index:2}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--acc);display:inline-flex;align-items:center;gap:9px;
+}
+.eyebrow::before{content:"";width:18px;height:1px;background:var(--acc);box-shadow:0 0 8px var(--acc-glow)}
+.sect-head{margin-bottom:54px;max-width:720px}
+.sect-head h2{
+  font-family:var(--disp);font-weight:600;font-size:42px;line-height:1.04;letter-spacing:-.025em;
+  margin-top:18px;text-wrap:balance;
+}
+.sect-head p{color:var(--txt-2);font-size:16px;margin-top:16px;max-width:560px;text-wrap:pretty}
+
+/* ============ NAV ============ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:50;height:64px;
+  display:flex;align-items:center;
+  border-bottom:1px solid transparent;
+  transition:background .4s ease,border-color .4s ease,backdrop-filter .4s ease;
+}
+nav.scrolled{background:rgba(8,9,14,0.72);backdrop-filter:blur(16px) saturate(140%);border-bottom-color:var(--line)}
+.nav-inner{max-width:var(--maxw);margin:0 auto;padding:0 32px;width:100%;display:flex;align-items:center;gap:38px}
+.wordmark{display:flex;align-items:center;gap:11px;font-family:var(--disp);font-weight:600;font-size:17px;letter-spacing:-.01em}
+.wm-mark{
+  width:24px;height:24px;position:relative;flex:none;
+}
+.wm-mark svg{display:block}
+.wm-mark .pulse{transform-origin:center;animation:wmpulse 2.6s ease-in-out infinite}
+@keyframes wmpulse{0%,100%{opacity:.4}50%{opacity:1}}
+.wordmark b{font-weight:600}
+.wordmark .slash{color:var(--acc)}
+.nav-links{display:flex;gap:30px;margin-left:8px}
+.nav-links a{font-size:14px;color:var(--txt-2);transition:color .2s;position:relative}
+.nav-links a:hover{color:var(--txt)}
+.nav-links a::after{content:"";position:absolute;left:0;right:100%;bottom:-6px;height:1px;background:var(--acc);transition:right .25s ease}
+.nav-links a:hover::after{right:0}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:20px}
+.nav-login{font-size:14px;color:var(--txt-2)}
+.nav-login:hover{color:var(--txt)}
+.btn{
+  font-family:var(--body);font-weight:500;font-size:14px;cursor:pointer;border:none;
+  display:inline-flex;align-items:center;gap:8px;transition:transform .18s cubic-bezier(.2,.7,.3,1),box-shadow .25s,background .2s;
+}
+.btn-primary{
+  background:var(--acc);color:#04130C;padding:10px 18px;border-radius:7px;font-weight:600;
+  box-shadow:0 0 0 rgba(61,220,151,0);
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px -8px var(--acc-glow),0 0 0 1px rgba(61,220,151,.4)}
+.btn-primary .ar{transition:transform .25s}
+.btn-primary:hover .ar{transform:translateX(3px)}
+.btn-ghost{background:transparent;color:var(--txt);padding:10px 18px;border-radius:7px;border:1px solid var(--line-2)}
+.btn-ghost:hover{border-color:var(--acc);color:var(--acc);transform:translateY(-2px)}
+.btn-lg{padding:14px 26px;font-size:15px}
+
+/* ============ HERO ============ */
+.hero{position:relative;padding-top:64px;min-height:760px;display:flex;align-items:center;overflow:hidden}
+#flow-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;opacity:.9}
+.hero::after{ /* bottom fade so flow dissolves into page */
+  content:"";position:absolute;left:0;right:0;bottom:0;height:200px;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom,transparent,var(--bg));
+}
+.hero-inner{position:relative;z-index:3;width:100%;padding:96px 0 110px}
+.hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:60px;align-items:center}
+.hero-tag{margin-bottom:26px}
+.hero h1{
+  font-family:var(--disp);font-weight:600;font-size:72px;line-height:0.98;letter-spacing:-.035em;
+  text-wrap:balance;
+}
+.hero h1 .em{color:var(--acc);position:relative;display:inline-block}
+.hero h1 .em::after{
+  content:"";position:absolute;left:0;right:0;bottom:.08em;height:.34em;background:var(--acc-soft);z-index:-1;
+}
+.hero-sub{color:var(--txt-2);font-size:18px;line-height:1.6;margin-top:26px;max-width:520px;text-wrap:pretty}
+.hero-cta{display:flex;gap:14px;margin-top:36px;align-items:center}
+.hero-note{font-family:var(--mono);font-size:11.5px;color:var(--txt-3);letter-spacing:.04em;margin-top:18px}
+.hero-note b{color:var(--acc);font-weight:400}
+
+/* hero badges (right side) */
+.badges{display:flex;flex-direction:column;gap:14px}
+.badge{
+  border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));
+  border-radius:12px;padding:20px 22px;position:relative;overflow:hidden;
+  transition:border-color .3s,transform .3s;
+}
+.badge:hover{border-color:var(--line-2);transform:translateX(-4px)}
+.badge::before{ /* edge light that actually travels around the card on hover */
+  content:"";position:absolute;inset:0;border-radius:12px;padding:1px;
+  background:linear-gradient(120deg,transparent 25%,var(--acc) 50%,transparent 75%);
+  background-size:300% 300%;background-position:0% 50%;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .4s;
+}
+.badge:hover::before{opacity:.7;animation:edgesweep 2.2s linear infinite}
+@keyframes edgesweep{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+.badge-k{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--txt-3)}
+.badge-v{font-family:var(--disp);font-weight:600;font-size:30px;letter-spacing:-.02em;margin-top:6px;display:flex;align-items:baseline;gap:6px}
+.badge-v .u{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--txt-2)}
+.badge-d{color:var(--txt-3);font-size:12.5px;margin-top:5px}
+.badge .dot{position:absolute;top:20px;right:22px;width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc-glow);animation:wmpulse 1.8s ease-in-out infinite}
+
+/* live ticker strip under hero */
+.ticker{
+  position:relative;z-index:3;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:rgba(8,9,14,.6);backdrop-filter:blur(8px);overflow:hidden;height:46px;display:flex;align-items:center;
+}
+.ticker-track{display:flex;gap:0;white-space:nowrap;animation:tick 40s linear infinite;will-change:transform}
+.ticker:hover .ticker-track{animation-play-state:paused}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ti{display:inline-flex;align-items:center;gap:9px;padding:0 26px;font-family:var(--mono);font-size:12.5px;color:var(--txt-2);border-right:1px solid var(--line)}
+.ti .lab{color:var(--txt-3);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+
+/* ============ TRUST BAND ============ */
+.trust{padding:64px 0 18px}
+.trust-lab{text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--txt-3);margin-bottom:30px}
+.trust-row{display:flex;justify-content:center;flex-wrap:wrap;gap:14px 12px}
+.trust-chip{
+  display:inline-flex;align-items:center;gap:9px;padding:9px 16px;border:1px solid var(--line);border-radius:30px;
+  font-size:13.5px;color:var(--txt-2);transition:border-color .25s,color .25s,background .25s;
+}
+.trust-chip:hover{border-color:var(--acc);color:var(--txt);background:var(--acc-soft)}
+.trust-chip .gd{width:6px;height:6px;border-radius:50%;background:var(--acc)}
+.trust-split{width:1px;height:18px;background:var(--line);margin:0 6px;align-self:center}
+
+/* ============ SECTION shell ============ */
+section.blk{padding:104px 0;position:relative}
+
+/* ============ FEATURES ============ */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:18px}
+.feat{
+  border:1px solid var(--line);border-radius:14px;padding:28px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,0));
+  transition:border-color .3s,transform .3s;
+}
+.feat:hover{border-color:var(--line-2);transform:translateY(-4px)}
+.feat .idx{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--acc);opacity:.8}
+.feat h3{font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:-.015em;margin:16px 0 10px;line-height:1.15}
+.feat p{color:var(--txt-2);font-size:14.5px;line-height:1.6;text-wrap:pretty}
+.feat-viz{margin-top:18px;height:54px}
+.viz-cap{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--txt-4);margin-top:6px;display:block}
+.feat-meta{margin-top:16px;display:flex;flex-wrap:wrap;gap:7px}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--txt-3);border:1px solid var(--line);border-radius:5px;padding:4px 8px}
+.feat:hover .tag{border-color:var(--line-2)}
+.feat .glowline{position:absolute;left:0;top:0;height:2px;width:0;background:var(--acc);box-shadow:0 0 12px var(--acc-glow);transition:width .5s ease}
+.feat:hover .glowline{width:100%}
+
+/* ============ TRADERS ============ */
+.tab-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+.tab{
+  font-family:var(--mono);font-size:12px;letter-spacing:.04em;padding:8px 15px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line);color:var(--txt-2);background:transparent;transition:all .2s;
+}
+.tab:hover{color:var(--txt);border-color:var(--line-2)}
+.tab.on{background:var(--acc);color:#04130C;border-color:var(--acc);font-weight:700}
+.trd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.trd{
+  border:1px solid var(--line);border-radius:14px;padding:22px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));
+  transition:border-color .3s,transform .3s;display:flex;flex-direction:column;min-height:330px;
+}
+.trd:hover{border-color:var(--line-2);transform:translateY(-4px)}
+.trd-top{display:flex;align-items:center;gap:13px}
+.trd-av{width:46px;height:46px;border-radius:11px;overflow:hidden;flex:none;border:1px solid var(--line-2);background:var(--bg-3)}
+.trd-av svg{width:100%;height:100%;display:block}
+.trd-name{font-family:var(--disp);font-weight:600;font-size:16px;letter-spacing:-.01em;line-height:1.2}
+.trd-meta{font-family:var(--mono);font-size:11px;color:var(--txt-3);margin-top:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.venue{color:var(--txt-2)}
+.src-pill{border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:9.5px;letter-spacing:.04em;color:var(--txt-2)}
+.trd-pnl{margin-top:20px}
+.trd-pnl .lab{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-3)}
+.trd-pnl .v{font-family:var(--mono);font-weight:700;font-size:28px;letter-spacing:-.01em;margin-top:3px;line-height:1}
+.trd-pnl .roi{font-family:var(--mono);font-size:12.5px;margin-top:7px}
+.trd-spark{margin-top:14px;height:40px}
+.trd-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:16px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--line)}
+.trd-stats div{background:var(--panel);padding:9px 10px}
+.trd-stats .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-3)}
+.trd-stats .vv{font-family:var(--mono);font-size:13px;margin-top:2px;color:var(--txt)}
+.trd-foot{margin-top:18px;display:flex;align-items:center;gap:10px}
+.btn-follow{
+  flex:1;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+  background:transparent;color:var(--acc);border:1px solid var(--acc);border-radius:8px;padding:9px;cursor:pointer;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.btn-follow:hover{background:var(--acc);color:#04130C}
+.btn-follow .blip{width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc-glow);animation:wmpulse 1.4s infinite}
+.btn-follow:hover .blip{background:#04130C;box-shadow:none}
+.trd-scale{font-family:var(--mono);font-size:10.5px;color:var(--txt-3);white-space:nowrap}
+.trd.loss{opacity:.96}
+.trd-flag{
+  position:absolute;top:18px;right:18px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--txt-3);border:1px solid var(--line);border-radius:4px;padding:2px 7px;
+}
+.trd-flag.honest{color:var(--neg);border-color:rgba(255,92,114,.3)}
+.trd-flag.hidden{color:var(--txt-2)}
+.square-foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px}
+.square-foot p{color:var(--txt-3);font-size:13px;max-width:560px}
+
+/* ============ DIFFERENTIATORS ============ */
+.diff-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px}
+.diff-hero{
+  border:1px solid var(--line);border-radius:16px;padding:38px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,rgba(61,220,151,.05),rgba(255,255,255,0) 60%);
+  display:flex;flex-direction:column;justify-content:space-between;min-height:330px;
+}
+.diff-hero .hl-mark{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--acc)}
+.diff-hero h3{font-family:var(--disp);font-weight:600;font-size:34px;letter-spacing:-.025em;margin-top:14px;line-height:1.05;max-width:440px}
+.diff-hero p{color:var(--txt-2);font-size:15px;margin-top:16px;max-width:440px;text-wrap:pretty}
+.hl-quote{
+  font-family:var(--disp);font-style:italic;font-weight:400;font-size:17px;line-height:1.45;color:var(--txt-2);
+  border-left:2px solid var(--acc);padding-left:18px;margin-top:24px;max-width:430px;text-wrap:pretty;
+}
+.diff-col{display:flex;flex-direction:column;gap:18px}
+.diff-card{
+  border:1px solid var(--line);border-radius:14px;padding:24px;flex:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,0));
+  transition:border-color .3s,transform .3s;
+}
+.diff-card:hover{border-color:var(--line-2);transform:translateY(-3px)}
+.diff-card .num-big{font-family:var(--disp);font-weight:700;font-size:34px;letter-spacing:-.03em;color:var(--acc);line-height:1}
+.diff-card h4{font-family:var(--disp);font-weight:600;font-size:17px;margin:12px 0 7px}
+.diff-card p{color:var(--txt-2);font-size:13.5px;line-height:1.55}
+.hl-icon{margin-bottom:auto}
+
+/* ============ PRICING ============ */
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.price{padding:38px 32px;border-right:1px solid var(--line);position:relative;display:flex;flex-direction:column}
+.price:last-child{border-right:none}
+.price.feat-plan{background:linear-gradient(180deg,rgba(61,220,151,.06),rgba(255,255,255,0))}
+.price.feat-plan::before{content:"";position:absolute;left:0;top:0;right:0;height:2px;background:var(--acc);box-shadow:0 0 16px var(--acc-glow)}
+.price .pname{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt-2);display:flex;align-items:center;gap:10px}
+.price.feat-plan .pname{color:var(--acc)}
+.pmark{font-family:var(--mono);font-size:9px;letter-spacing:.1em;background:var(--acc);color:#04130C;padding:2px 7px;border-radius:4px;font-weight:700}
+.price .amt{font-family:var(--disp);font-weight:700;font-size:46px;letter-spacing:-.03em;margin-top:22px;line-height:1;display:flex;align-items:baseline;gap:6px}
+.price .amt .per{font-family:var(--mono);font-size:14px;font-weight:400;color:var(--txt-3);letter-spacing:0}
+.price .ptag{color:var(--txt-3);font-size:13px;margin-top:12px;min-height:38px}
+.price ul{list-style:none;margin:24px 0 28px;display:flex;flex-direction:column;gap:12px}
+.price li{font-size:13.5px;color:var(--txt-2);display:flex;gap:11px;align-items:flex-start;line-height:1.4}
+.price li svg{flex:none;margin-top:3px}
+.price .btn{width:100%;justify-content:center;margin-top:auto}
+.price-foot{text-align:center;margin-top:26px;font-family:var(--mono);font-size:12px;color:var(--txt-3);letter-spacing:.03em}
+.price-foot b{color:var(--acc);font-weight:400}
+
+/* ============ FINAL CTA ============ */
+.final{position:relative;padding:120px 0;overflow:hidden;text-align:center;border-top:1px solid var(--line)}
+#cta-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;opacity:.5}
+.final .wrap{z-index:3}
+.final h2{font-family:var(--disp);font-weight:600;font-size:54px;letter-spacing:-.03em;line-height:1.02;text-wrap:balance}
+.final h2 .em{color:var(--acc)}
+.final p{color:var(--txt-2);font-size:17px;margin-top:20px;max-width:520px;margin-left:auto;margin-right:auto;text-wrap:pretty}
+.final .hero-cta{justify-content:center;margin-top:34px}
+
+/* ============ FOOTER ============ */
+footer{border-top:1px solid var(--line);padding:56px 0 40px;position:relative;z-index:2;background:var(--bg)}
+.foot-top{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:40px;padding-bottom:40px;border-bottom:1px solid var(--line)}
+.foot-brand .wordmark{margin-bottom:16px}
+.foot-brand p{color:var(--txt-3);font-size:13px;max-width:300px;line-height:1.6}
+.foot-status{display:flex;align-items:center;gap:18px;margin-top:20px;font-family:var(--mono);font-size:11.5px;color:var(--txt-3)}
+.foot-status .grp{display:flex;align-items:center;gap:7px}
+.foot-status .live{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 9px var(--acc-glow);animation:wmpulse 1.8s infinite}
+.foot-col h5{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-3);margin-bottom:16px}
+.foot-col a{display:block;color:var(--txt-2);font-size:13.5px;margin-bottom:11px;transition:color .2s}
+.foot-col a:hover{color:var(--acc)}
+.foot-bottom{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding-top:28px}
+.risk{color:var(--txt-3);font-size:12px;max-width:680px;line-height:1.55}
+.risk b{color:var(--neg);font-weight:600}
+.foot-clock{font-family:var(--mono);font-size:12px;color:var(--txt-2);display:flex;align-items:center;gap:10px;white-space:nowrap}
+
+/* reveal animation (progressive enhancement — content visible by default) */
+.rv{opacity:1}
+@media (prefers-reduced-motion:no-preference){
+  .js .rv{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
+  .js .rv.in{opacity:1;transform:none}
+}
+
+/* ============ responsive guard (base is 1440) ============ */
+@media (max-width:1080px){
+  .hero-grid{grid-template-columns:1fr;gap:40px}
+  .feat-grid,.trd-grid,.price-grid{grid-template-columns:1fr 1fr}
+  .price-grid{border-radius:14px}
+  .price{border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .diff-grid{grid-template-columns:1fr}
+  .foot-top{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav id="nav">
+  <div class="nav-inner">
+    <a href="#" class="wordmark">
+      <span class="wm-mark">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect x="1" y="1" width="22" height="22" rx="6" stroke="var(--acc)" stroke-width="1.4" opacity=".5"/>
+          <path class="pulse" d="M5 13.5l3.2-4.2 3 3.6L17 6.5l2 2.8" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <b>Copy<span class="slash">/</span>Trader</b>
+    </a>
+    <div class="nav-links">
+      <a href="#features">功能</a>
+      <a href="#traders">交易员</a>
+      <a href="#pricing">定价</a>
+      <a href="#docs">文档</a>
+    </div>
+    <div class="nav-right">
+      <a href="#" class="nav-login">登录</a>
+      <button class="btn btn-primary">免费试用 7 天 <span class="ar">→</span></button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <canvas id="flow-canvas"></canvas>
+  <div class="hero-inner">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <div class="hero-tag eyebrow">ONCHAIN VELOCITY · 实时跟单引擎</div>
+          <h1>跨所跟单，<br/>跑在 <span class="em">毫秒</span> 之内。</h1>
+          <p class="hero-sub">六大信号源汇入，五大交易所执行。从交易员开仓到你的账户成交——中位延迟 <b style="color:var(--txt)">P50 &lt; 2ms</b>。零分润，盈利全留，只付月租。</p>
+          <div class="hero-cta">
+            <button class="btn btn-primary btn-lg">免费试用 7 天 <span class="ar">→</span></button>
+            <button class="btn btn-ghost btn-lg">观看实时信号流</button>
+          </div>
+          <div class="hero-note">EXECUTION FEED · <b>LIVE</b> · 端到端中位延迟 <span class="mono">P50 &lt; 2ms</span> · 6 / 6 信号源在线</div>
+        </div>
+        <div class="badges">
+          <div class="badge rv">
+            <span class="dot"></span>
+            <div class="badge-k">Execution Latency · P50</div>
+            <div class="badge-v"><span class="u" style="font-size:20px;color:var(--txt-2)">&lt;</span><span data-odo="2" data-dec="0">2</span><span class="u">ms</span></div>
+            <div class="badge-d">信号到成交的端到端中位（P50）延迟</div>
+          </div>
+          <div class="badge rv">
+            <div class="badge-k">Coverage</div>
+            <div class="badge-v"><span data-odo="5">5</span><span class="u">交易所</span><span style="color:var(--txt-4)">/</span><span data-odo="6">6</span><span class="u">信号源</span></div>
+            <div class="badge-d">Binance · OKX · Gate · Bitget · Hyperliquid</div>
+          </div>
+          <div class="badge rv">
+            <div class="badge-k">Profit Share</div>
+            <div class="badge-v"><span data-odo="0">0</span><span class="u">% 分润</span></div>
+            <div class="badge-d">盈利全部归你 · 仅收固定月租订阅费</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ LIVE TICKER ============ -->
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<!-- ============ TRUST BAND ============ -->
+<section class="trust">
+  <div class="wrap">
+    <div class="trust-lab">5 大交易所执行 · 6 类信号源接入</div>
+    <div class="trust-row">
+      <span class="trust-chip"><span class="gd"></span>Binance Futures</span>
+      <span class="trust-chip"><span class="gd"></span>OKX Perpetual</span>
+      <span class="trust-chip"><span class="gd"></span>Gate.io Perp</span>
+      <span class="trust-chip"><span class="gd"></span>Bitget Mix</span>
+      <span class="trust-chip"><span class="gd"></span>Hyperliquid · 链上原生</span>
+      <span class="trust-split"></span>
+      <span class="trust-chip">币安带单</span>
+      <span class="trust-chip">链上聪明钱</span>
+      <span class="trust-chip">欧易带单</span>
+      <span class="trust-chip">Bitget</span>
+      <span class="trust-chip">币Coin</span>
+      <span class="trust-chip">Hyperliquid</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="blk" id="features">
+  <div class="wrap">
+    <div class="sect-head rv">
+      <div class="eyebrow">CAPABILITIES</div>
+      <h2>一台为跟单而生的执行引擎。</h2>
+      <p>不是把单子转发出去——是把全网信号收束成一条毫秒级的执行链路，每个参数都为「跟得快、跟得稳、跟得像你自己」服务。</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat rv"><span class="glowline"></span>
+        <div class="idx">01 / SIGNALS</div>
+        <h3>6 大信号源</h3>
+        <p>币安带单、链上聪明钱、欧易带单、Bitget、币Coin、Hyperliquid——全部归一为同一条信号总线。</p>
+        <canvas class="feat-viz" data-viz="bars"></canvas>
+        <span class="viz-cap">// 6 源信号合流为单条执行总线</span>
+        <div class="feat-meta"><span class="tag">CEX 带单</span><span class="tag">ON-CHAIN</span><span class="tag">多源聚合</span></div>
+      </div>
+      <div class="feat rv"><span class="glowline"></span>
+        <div class="idx">02 / CONTROL</div>
+        <h3>20+ 跟单参数</h3>
+        <p>固定金额 / 全仓 / 复利滚动，倍率、触发价、止盈止损循环、安全垫、黑白名单——把交易员的行为精确映射成你的风险偏好。</p>
+        <canvas class="feat-viz" data-viz="dials"></canvas>
+        <span class="viz-cap">// 倍率 · 触发价 · 安全垫 三组可调旋钮</span>
+        <div class="feat-meta"><span class="tag">3 种资金模式</span><span class="tag">限价优于 %</span><span class="tag">循环止盈</span></div>
+      </div>
+      <div class="feat rv"><span class="glowline"></span>
+        <div class="idx">03 / SCALE</div>
+        <h3>多账号 · 独立出口 IP</h3>
+        <p>每个子账户绑定专属出口 IP，互不串味。机构级多账户并行执行，规避风控关联，隔离管理。</p>
+        <canvas class="feat-viz" data-viz="ip"></canvas>
+        <span class="viz-cap">// 每个子账户 → 专属出口 IP 通道</span>
+        <div class="feat-meta"><span class="tag">EGRESS 隔离</span><span class="tag">多账户并行</span><span class="tag">合规优先</span></div>
+      </div>
+      <div class="feat rv"><span class="glowline"></span>
+        <div class="idx">04 / RISK</div>
+        <h3>风控引擎</h3>
+        <p>跟单亏损阈值、安全垫倍数、保证金变动监控,触发即熔断。下单成功 / 失败 / 触发风控全程通知。</p>
+        <canvas class="feat-viz" data-viz="risk"></canvas>
+        <span class="viz-cap">// 虚线为亏损阈值，触线即熔断</span>
+        <div class="feat-meta"><span class="tag">阈值熔断</span><span class="tag">TG / EMAIL</span><span class="tag">实时告警</span></div>
+      </div>
+      <div class="feat rv"><span class="glowline"></span>
+        <div class="idx">05 / ALPHA</div>
+        <h3>链上聪明钱</h3>
+        <p>多链追踪聪明钱地址,把链上持仓与开平仓动作翻译成可执行的合约跟单信号,捕捉 CEX 看不到的 alpha。</p>
+        <canvas class="feat-viz" data-viz="chain"></canvas>
+        <span class="viz-cap">// 聪明钱地址图谱 → 收敛为跟单信号</span>
+        <div class="feat-meta"><span class="tag">多链</span><span class="tag">地址追踪</span><span class="tag">链上→合约</span></div>
+      </div>
+      <div class="feat rv"><span class="glowline"></span>
+        <div class="idx">06 / INSIGHT</div>
+        <h3>归因分析</h3>
+        <p>Sharpe / Calmar / MAR 多维度拆解每个交易员与你自己组合的风险收益,让「跟谁」是个数据决策,不是感觉。</p>
+        <canvas class="feat-viz" data-viz="curve"></canvas>
+        <span class="viz-cap">// 风险调整后净值曲线（示意）</span>
+        <div class="feat-meta"><span class="tag">SHARPE</span><span class="tag">CALMAR</span><span class="tag">MAR</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRADERS ============ -->
+<section class="blk" id="traders" style="padding-top:40px">
+  <div class="wrap">
+    <div class="sect-head rv">
+      <div class="eyebrow">TRADER SQUARE</div>
+      <h2>真实战绩，实时上榜。</h2>
+      <p>隐藏持仓、私域、满员、未上架——别人跟不了的,我们都能跟。挑一个交易员,一键启动跟单。</p>
+    </div>
+    <div class="tab-row rv" id="srcTabs">
+      <button class="tab on" data-src="all">全部</button>
+      <button class="tab" data-src="binance">币安带单</button>
+      <button class="tab" data-src="smart">链上聪明钱</button>
+      <button class="tab" data-src="okx">欧易带单</button>
+      <button class="tab" data-src="bitget">Bitget</button>
+      <button class="tab" data-src="bicoin">币Coin</button>
+      <button class="tab" data-src="hl">Hyperliquid</button>
+    </div>
+    <div class="trd-grid" id="trdGrid"></div>
+    <div class="square-foot rv">
+      <p>所有数据来自平台真实上架交易员。榜单包含正负样本——我们展示亏损样本以示诚实,跟单前请用归因分析自行评估。</p>
+      <button class="btn btn-ghost">浏览全部交易员 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DIFFERENTIATORS ============ -->
+<section class="blk" id="why">
+  <div class="wrap">
+    <div class="sect-head rv">
+      <div class="eyebrow">WHY COPY TRADER</div>
+      <h2>我们不抽你的利润。</h2>
+    </div>
+    <div class="diff-grid">
+      <div class="diff-hero rv">
+        <div>
+          <div class="hl-mark">ZERO PROFIT SHARE</div>
+          <h3>盈利全留,只付月租。</h3>
+          <p>市面上大多数跟单平台抽走你 10%–20% 的盈利——赚得越多,被抽得越多。Copy Trader 反过来:固定月租订阅,盈利一分不动。</p>
+        </div>
+        <div class="hl-quote">「执行延迟是 alpha 的隐性成本。我们把它压到毫秒级,把分润压到零——剩下的,都是你的。」</div>
+      </div>
+      <div class="diff-col">
+        <div class="diff-card rv">
+          <div class="num-big">HL</div>
+          <h4>Hyperliquid 一等公民</h4>
+          <p>链上原生订单簿直连,不是事后适配。Hyperliquid 信号源 + 执行端深度集成,享受与 CEX 同级的毫秒执行。</p>
+        </div>
+        <div class="diff-card rv">
+          <div class="num-big">XC</div>
+          <h4>跨链聪明钱 + Self-Host</h4>
+          <p>多链追踪聪明钱地址,把链上 alpha 接入合约执行;机构可私有化部署 self-host,数据与密钥不出自有环境。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRICING ============ -->
+<section class="blk" id="pricing">
+  <div class="wrap">
+    <div class="sect-head rv" style="text-align:center;margin-left:auto;margin-right:auto">
+      <div class="eyebrow" style="justify-content:center">PRICING</div>
+      <h2>零分润定价,透明到分。</h2>
+      <p style="margin-left:auto;margin-right:auto">7 天免费试用,无需绑卡即可体验。邀请得 10% 返佣,受邀享半价。</p>
+    </div>
+    <div class="price-grid rv">
+      <div class="price">
+        <div class="pname">Trial</div>
+        <div class="amt">免费<span class="per">/ 7 天</span></div>
+        <div class="ptag">先跑通一条跟单链路,再决定要不要付费。</div>
+        <ul>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>1 个交易账户</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>1 个跟单名额</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>标准速度执行</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>全信号源浏览</li>
+        </ul>
+        <button class="btn btn-ghost">开始试用</button>
+      </div>
+      <div class="price feat-plan">
+        <div class="pname">Pro <span class="pmark">最受欢迎</span></div>
+        <div class="amt">$<span data-odo="80">80</span><span class="per">/ MO</span></div>
+        <div class="ptag">为认真做单的个人交易者打造,毫秒级 + 全功能。</div>
+        <ul>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>4 个交易账户</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>多跟单名额</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>极速跟单 · P50 &lt;2ms</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>独立出口 IP</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>全部 6 类信号源</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>0% 分润 · 盈利全留</li>
+        </ul>
+        <button class="btn btn-primary">免费试用 7 天 <span class="ar">→</span></button>
+      </div>
+      <div class="price">
+        <div class="pname">Institutional</div>
+        <div class="amt">定制<span class="per">/ 联系销售</span></div>
+        <div class="ptag">为带单团队与基金提供的私有化与优先资源方案。</div>
+        <ul>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>不限交易账户</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>带单员资格</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>Self-Host 私有化</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>优先 RPC 通道</li>
+          <li><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7" stroke="var(--acc)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>专属风控配置</li>
+        </ul>
+        <button class="btn btn-ghost">联系销售</button>
+      </div>
+    </div>
+    <div class="price-foot">所有付费档位 <b>0% 分润</b> · 邀请返佣 <b>10%</b> · 受邀 <b>半价</b> · 支持 USDT 月付</div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section class="final">
+  <canvas id="cta-canvas"></canvas>
+  <div class="wrap">
+    <div class="eyebrow rv" style="justify-content:center">START NOW</div>
+    <h2 class="rv">让你的账户,跑在 <span class="em">链上速度</span> 上。</h2>
+    <p class="rv">7 天免费试用,无需绑卡。接上一个信号源,挑一个交易员,让你的第一笔跟单以 P50 &lt; 2ms 的中位延迟落地。</p>
+    <div class="hero-cta rv">
+      <button class="btn btn-primary btn-lg">免费试用 7 天 <span class="ar">→</span></button>
+      <button class="btn btn-ghost btn-lg">预约机构演示</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer id="docs">
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <a href="#" class="wordmark">
+          <span class="wm-mark">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <rect x="1" y="1" width="22" height="22" rx="6" stroke="var(--acc)" stroke-width="1.4" opacity=".5"/>
+              <path class="pulse" d="M5 13.5l3.2-4.2 3 3.6L17 6.5l2 2.8" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <b>Copy<span class="slash">/</span>Trader</b>
+        </a>
+        <p>跨交易所 · 跨数据源的加密合约智能跟单引擎。零分润,毫秒级执行,合规优先。</p>
+        <div class="foot-status">
+          <span class="grp"><span class="live"></span>All Systems Operational</span>
+          <span class="grp">LATENCY <b style="color:var(--acc)">P50 &lt; 2MS</b></span>
+        </div>
+      </div>
+      <div class="foot-col">
+        <h5>产品</h5>
+        <a href="#features">信号源</a>
+        <a href="#features">跟单参数</a>
+        <a href="#why">风控引擎</a>
+        <a href="#why">归因分析</a>
+      </div>
+      <div class="foot-col">
+        <h5>资源</h5>
+        <a href="#">文档</a>
+        <a href="#">API 参考</a>
+        <a href="#">Self-Host 指南</a>
+        <a href="#">系统状态</a>
+      </div>
+      <div class="foot-col">
+        <h5>公司</h5>
+        <a href="#pricing">定价</a>
+        <a href="#">邀请返佣</a>
+        <a href="#">联系销售</a>
+        <a href="#">合规说明</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <p class="risk"><b>风险提示:</b> 加密货币合约交易具有极高风险,可能导致全部本金损失。历史业绩不代表未来收益,跟单不构成投资建议。请在充分理解杠杆风险后谨慎参与,仅投入可承受损失的资金。</p>
+      <div class="foot-clock"><span class="live" style="width:6px;height:6px"></span><span id="utcClock">--:--:-- UTC</span></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+document.documentElement.classList.add('js');
+
+/* ============ HERO SIGNAL FLOW (signature canvas) ============ */
+(function(){
+  const cv = document.getElementById('flow-canvas');
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+  let W,H,dpr;
+  // real trader fills streaming as data
+  const FILLS = [
+    {who:'茂茂大魔王', sym:'BTC', side:'L', px:'74 180'},
+    {who:'风火山林', sym:'ETH', side:'S', px:'2 612'},
+    {who:'牛的青山在', sym:'SOL', side:'L', px:'182.4'},
+    {who:'KNOTMAIN', sym:'BTC', side:'S', px:'74 092'},
+    {who:'寒星日照', sym:'BNB', side:'L', px:'604.2'},
+    {who:'SMART·0x4f', sym:'HYPE', side:'L', px:'18.66'},
+    {who:'茂茂大魔王', sym:'BTC', side:'S', px:'74 240'},
+    {who:'风火山林', sym:'DOGE', side:'L', px:'0.1284'},
+  ];
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio||1, 2);
+    W = cv.clientWidth; H = cv.clientHeight;
+    cv.width = W*dpr; cv.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  // lanes: horizontal flow lines, particles ride them L->R
+  let lanes=[], particles=[];
+  function init(){
+    resize();
+    const N = 9;
+    lanes = [];
+    for(let i=0;i<N;i++){
+      const y = (H*0.10) + (H*0.80)*(i/(N-1));
+      lanes.push({y, jitter:(Math.random()*2-1)*8, speedF:0.6+Math.random()*0.8});
+    }
+    particles = [];
+    for(let i=0;i<46;i++) spawn(true);
+  }
+  function spawn(initial){
+    const lane = lanes[Math.floor(Math.random()*lanes.length)];
+    const isData = Math.random()<0.22;
+    particles.push({
+      x: initial? Math.random()*W : -40,
+      lane,
+      r: isData? 0 : (0.8+Math.random()*1.6),
+      sp: (0.7+Math.random()*1.8)*lane.speedF,
+      a: 0.15+Math.random()*0.55,
+      data: isData,
+      fill: isData? FILLS[Math.floor(Math.random()*FILLS.length)] : null,
+      len: 8+Math.random()*26,
+    });
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    // faint lane guides
+    ctx.lineWidth = 1;
+    for(const ln of lanes){
+      ctx.strokeStyle = 'rgba(61,220,151,0.035)';
+      ctx.beginPath(); ctx.moveTo(0, ln.y+ln.jitter); ctx.lineTo(W, ln.y+ln.jitter); ctx.stroke();
+    }
+    for(let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      p.x += p.sp;
+      const y = p.lane.y + p.lane.jitter;
+      if(p.data){
+        // data fill token: small tag glow + trailing comet
+        const grad = ctx.createLinearGradient(p.x-p.len*4,0,p.x,0);
+        grad.addColorStop(0,'rgba(61,220,151,0)');
+        grad.addColorStop(1,'rgba(61,220,151,'+(p.a*0.9)+')');
+        ctx.strokeStyle = grad; ctx.lineWidth=1.6;
+        ctx.beginPath(); ctx.moveTo(p.x-p.len*4,y); ctx.lineTo(p.x,y); ctx.stroke();
+        // head
+        ctx.fillStyle = p.fill.side==='L' ? 'rgba(61,220,151,0.95)' : 'rgba(255,92,114,0.92)';
+        ctx.shadowColor = p.fill.side==='L' ? 'rgba(61,220,151,0.7)' : 'rgba(255,92,114,0.6)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(p.x,y,2.4,0,Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        // label
+        ctx.font = '10px "Space Mono", monospace';
+        ctx.fillStyle = 'rgba(237,241,244,'+(p.a+0.2)+')';
+        ctx.fillText(p.fill.sym+' '+(p.fill.side==='L'?'▲':'▼'), p.x+8, y-6);
+        ctx.fillStyle = 'rgba(154,164,178,'+(p.a)+')';
+        ctx.fillText(p.fill.px, p.x+8, y+9);
+      } else {
+        const grad = ctx.createLinearGradient(p.x-p.len,0,p.x,0);
+        grad.addColorStop(0,'rgba(61,220,151,0)');
+        grad.addColorStop(1,'rgba(61,220,151,'+p.a+')');
+        ctx.strokeStyle = grad; ctx.lineWidth = p.r;
+        ctx.beginPath(); ctx.moveTo(p.x-p.len,y); ctx.lineTo(p.x,y); ctx.stroke();
+      }
+      if(p.x > W+80){ particles.splice(i,1); spawn(false); }
+    }
+    requestAnimationFrame(frame);
+  }
+  init();
+  window.addEventListener('resize', ()=>{ resize(); init(); });
+  // draw one static frame immediately, then animate (so screenshot never empty)
+  ctx.clearRect(0,0,W,H);
+  requestAnimationFrame(frame);
+})();
+
+/* ============ ODOMETER COUNT-UP ============ */
+function odo(el){
+  const target = parseFloat(el.dataset.odo);
+  const dec = parseInt(el.dataset.dec||'0',10);
+  const dur = 1400; const t0 = performance.now();
+  function step(t){
+    const k = Math.min((t-t0)/dur,1);
+    const e = 1-Math.pow(1-k,3);
+    const val = target*e;
+    el.textContent = dec? val.toFixed(dec) : Math.round(val).toString();
+    if(k<1) requestAnimationFrame(step);
+    else el.textContent = dec? target.toFixed(dec) : Math.round(target).toString();
+  }
+  requestAnimationFrame(step);
+}
+
+/* ============ TRADERS DATA ============ */
+const TRADERS = [
+  {name:'茂茂大魔王', venue:'OKX', src:['okx','bicoin'], srcLabel:'币Coin', pnl:'+1 343 829.94', roi:'+14539.61%', win:'34.40%', dd:'2.57%', days:'2209', scale:'7 618.91', seed:'茂茂大魔王', up:true},
+  {name:'风火山林Trader', venue:'Binance', src:['binance','bicoin'], srcLabel:'币Coin', pnl:'+1 927 532.79', roi:'+6880.06%', win:'45.45%', dd:'6.86%', days:'1705', scale:'89 999.16', seed:'风火山林Trader', up:true},
+  {name:'KNOTMAIN', venue:'Binance', src:['binance'], srcLabel:'隐藏持仓', flag:'hidden', flagText:'隐藏持仓 · 90D', pnl:'+365 404.77', roi:'+53.51%', win:'57.83%', dd:'13.32%', days:'Sharpe 3.20', daysLab:'风险', scale:null, seed:'KNOTMAIN', up:true},
+  {name:'牛的青山在', venue:'OKX', src:['okx','bicoin'], srcLabel:'币Coin', pnl:'+297 089.72', roi:'+10326.49%', win:'75.00%', dd:'1.15%', days:'899', scale:'13 292.43', seed:'牛的青山在', up:true},
+  {name:'寒星日照', venue:'OKX', src:['okx','bicoin'], srcLabel:'币Coin', pnl:'+408 565.96', roi:'+343.37%', win:'43.33%', dd:'14.51%', days:'1218', scale:'138 001.32', seed:'寒星日照', up:true},
+  {name:'MaximizeSR', venue:'Binance', src:['binance'], srcLabel:'隐藏持仓', flag:'honest', flagText:'负样本 · 90D', pnl:'-319.96', roi:'-6.03%', win:'51.29%', dd:'9.15%', days:'Sharpe 0.06', daysLab:'风险', scale:'46 358.66', seed:'MaximizeSR', up:false},
+];
+const SRC_HINT = {smart:['茂茂大魔王'], hl:['牛的青山在'], bitget:['寒星日照']}; // for tab variety; "all" shows everything
+
+function sparkPath(up){
+  // deterministic-ish jagged path
+  const pts = up
+    ? [6,10,8,16,13,22,18,28,24,34,40]
+    : [40,34,30,26,28,22,18,20,14,16,12];
+  // build polyline normalized
+  let n = up? [8,12,10,18,15,26,22,30,34,32,40] : [34,30,32,24,28,18,22,14,16,10,12];
+  const w=160,h=40,max=Math.max(...n),min=Math.min(...n);
+  return n.map((v,i)=>{
+    const x=(i/(n.length-1))*w;
+    const y=h-((v-min)/(max-min))*(h-6)-3;
+    return (i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);
+  }).join(' ');
+}
+
+/* venue-colored, zero-dependency monogram identicon (inline SVG, no external calls) */
+const VENUE_TINT = {
+  Binance:'#F0B90B', OKX:'#7B61FF', Gate:'#2354E6', Bitget:'#00E5C7', Hyperliquid:'#3DDC97'
+};
+function avatarSVG(t, i){
+  const tint = VENUE_TINT[t.venue] || '#3DDC97';
+  // first visible glyph of the name (CJK or latin), uppercased for latin
+  const ch = Array.from(t.name)[0] || '?';
+  const glyph = /[a-z]/.test(ch) ? ch.toUpperCase() : ch;
+  // deterministic angle from name so each card differs but is stable across loads
+  let seed = 0; for(const c of t.name) seed = (seed*31 + c.charCodeAt(0)) % 360;
+  const small = /[一-鿿]/.test(glyph) ? 22 : 24;
+  return `<svg viewBox="0 0 46 46" role="img" aria-label="${t.name}">
+    <defs>
+      <linearGradient id="av${i}" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(${seed} .5 .5)">
+        <stop offset="0" stop-color="${tint}" stop-opacity=".34"/>
+        <stop offset="1" stop-color="${tint}" stop-opacity=".06"/>
+      </linearGradient>
+    </defs>
+    <rect width="46" height="46" fill="#10131C"/>
+    <rect width="46" height="46" fill="url(#av${i})"/>
+    <text x="23" y="24" font-family="'Space Grotesk','Inter',sans-serif" font-weight="600"
+      font-size="${small}" fill="${tint}" text-anchor="middle" dominant-baseline="central">${glyph}</text>
+  </svg>`;
+}
+
+function renderTraders(filter){
+  const grid = document.getElementById('trdGrid');
+  let list = TRADERS;
+  if(filter && filter!=='all'){
+    list = TRADERS.filter(t=> t.src.includes(filter));
+    if(list.length===0) list = TRADERS.filter(t=> (SRC_HINT[filter]||[]).includes(t.name));
+    if(list.length===0) list = TRADERS.slice(0,3);
+  }
+  grid.innerHTML = list.map((t,i)=>{
+    const cls = t.up?'pos':'neg';
+    const flag = t.flag? `<div class="trd-flag ${t.flag}">${t.flagText}</div>`:'';
+    const scaleRow = t.scale? `<span class="trd-scale">带单 <span class="num">${t.scale}</span> U</span>`:'<span class="trd-scale" style="color:var(--txt-4)">规模未公开</span>';
+    return `<div class="trd ${t.up?'':'loss'} rv" style="transition-delay:${i*55}ms">
+      ${flag}
+      <div class="trd-top">
+        <div class="trd-av">${avatarSVG(t,i)}</div>
+        <div>
+          <div class="trd-name">${t.name}</div>
+          <div class="trd-meta"><span class="venue">${t.venue}</span> · <span class="src-pill">${t.srcLabel}</span></div>
+        </div>
+      </div>
+      <div class="trd-pnl">
+        <div class="lab">总盈亏 (USDT)</div>
+        <div class="v ${cls}">${t.pnl}</div>
+        <div class="roi ${cls}">收益率 ${t.roi}</div>
+      </div>
+      <svg class="trd-spark" viewBox="0 0 160 40" preserveAspectRatio="none">
+        <defs><linearGradient id="sg${i}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="${t.up?'#3DDC97':'#FF5C72'}" stop-opacity=".25"/>
+          <stop offset="1" stop-color="${t.up?'#3DDC97':'#FF5C72'}" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="${sparkPath(t.up)} L160 40 L0 40 Z" fill="url(#sg${i})"/>
+        <path d="${sparkPath(t.up)}" fill="none" stroke="${t.up?'#3DDC97':'#FF5C72'}" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <div class="trd-stats">
+        <div><div class="k">胜率</div><div class="vv">${t.win}</div></div>
+        <div><div class="k">回撤</div><div class="vv">${t.dd}</div></div>
+        <div><div class="k">${t.daysLab||'入驻'}</div><div class="vv">${t.daysLab?t.days:t.days+'d'}</div></div>
+      </div>
+      <div class="trd-foot">
+        <button class="btn-follow"><span class="blip"></span>启动跟单</button>
+        ${scaleRow}
+      </div>
+    </div>`;
+  }).join('');
+  // Reveal cards immediately (this is the core social-proof block — never let it
+  // depend on IO timing or a screenshot harness firing early). Stagger is handled
+  // purely by CSS transition-delay, so the reveal still reads as motion on scroll.
+  requestAnimationFrame(()=>{
+    grid.querySelectorAll('.trd.rv').forEach(el=> el.classList.add('in'));
+  });
+}
+
+/* tabs */
+document.getElementById('srcTabs').addEventListener('click', e=>{
+  const b = e.target.closest('.tab'); if(!b) return;
+  document.querySelectorAll('#srcTabs .tab').forEach(t=>t.classList.remove('on'));
+  b.classList.add('on');
+  renderTraders(b.dataset.src);
+});
+
+/* ============ FEATURE MINI-VIZ (canvas) ============ */
+function drawFeatViz(cv){
+  const type = cv.dataset.viz;
+  const ctx = cv.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio||1,2);
+  const W = cv.clientWidth||300, H = cv.clientHeight||54;
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const A='#3DDC97';
+  ctx.strokeStyle=A; ctx.fillStyle=A;
+  if(type==='bars'){
+    const n=18, vals=[3,7,5,9,6,11,8,13,7,12,9,14,10,16,11,13,9,15];
+    const bw=W/n;
+    for(let i=0;i<n;i++){ const h=vals[i]/16*H; ctx.globalAlpha=.3+0.5*(vals[i]/16);
+      ctx.fillRect(i*bw+2, H-h, bw-4, h); }
+    ctx.globalAlpha=1;
+  } else if(type==='dials'){
+    const labs=['倍率','触发','安全垫']; const fills=[0.62,0.78,0.45];
+    for(let d=0;d<3;d++){ const cx=W*(0.18+d*0.32), cy=H/2-3, r=17;
+      ctx.lineCap='round';
+      ctx.globalAlpha=.22; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*fills[d]); ctx.stroke();
+      ctx.globalAlpha=.7; ctx.font='8px "Space Mono"'; ctx.textAlign='center'; ctx.fillText(labs[d], cx, cy+r+9); ctx.textAlign='left'; ctx.globalAlpha=1;
+    }
+    ctx.lineCap='butt';
+  } else if(type==='ip'){
+    const ys=[H*0.25,H*0.5,H*0.75];
+    ys.forEach((y,i)=>{ ctx.globalAlpha=.5; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(8,y); ctx.lineTo(W-40,y); ctx.stroke();
+      ctx.globalAlpha=1; ctx.beginPath(); ctx.arc(8,y,2.4,0,7); ctx.fill();
+      ctx.beginPath(); ctx.arc(W-36,y,2.4,0,7); ctx.fill();
+      ctx.globalAlpha=.6; ctx.font='9px "Space Mono"'; ctx.fillText('IP·'+(i+1), W-30, y+3); ctx.globalAlpha=1;});
+  } else if(type==='risk'){
+    ctx.lineWidth=1.6; ctx.beginPath();
+    const pts=[6,8,14,10,28,24,12,9,7]; const bw=W/(pts.length-1);
+    pts.forEach((v,i)=>{ const x=i*bw,y=H-v/28*H*0.85-4; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.stroke();
+    // threshold line
+    ctx.globalAlpha=.35; ctx.setLineDash([4,4]); ctx.strokeStyle='#FF5C72';
+    ctx.beginPath(); ctx.moveTo(0,H*0.32); ctx.lineTo(W,H*0.32); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1; ctx.strokeStyle=A;
+  } else if(type==='chain'){
+    const nodes=[[10,H/2],[W*0.33,H*0.25],[W*0.33,H*0.75],[W*0.62,H*0.5],[W-12,H*0.3],[W-12,H*0.7]];
+    const edges=[[0,1],[0,2],[1,3],[2,3],[3,4],[3,5]];
+    ctx.globalAlpha=.4; ctx.lineWidth=1;
+    edges.forEach(([a,b])=>{ ctx.beginPath(); ctx.moveTo(nodes[a][0],nodes[a][1]); ctx.lineTo(nodes[b][0],nodes[b][1]); ctx.stroke(); });
+    ctx.globalAlpha=1;
+    nodes.forEach((nd,i)=>{ ctx.beginPath(); ctx.arc(nd[0],nd[1], i===3?3.4:2.4,0,7); ctx.fill(); });
+  } else if(type==='curve'){
+    ctx.lineWidth=1.8; ctx.beginPath();
+    const pts=[4,5,7,6,9,11,10,14,16,15,19]; const bw=W/(pts.length-1);
+    const grad=ctx.createLinearGradient(0,H,0,0); grad.addColorStop(0,'rgba(61,220,151,0)'); grad.addColorStop(1,'rgba(61,220,151,0.3)');
+    pts.forEach((v,i)=>{ const x=i*bw,y=H-v/19*H*0.85-4; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.stroke();
+    ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  }
+}
+
+/* ============ TICKER ============ */
+(function(){
+  const items = [
+    ['BTC','$74 180','-1.97%','neg'],
+    ['恐慌贪婪','22','极度恐慌','neg'],
+    ['24H 爆仓','$2.89亿','LIQ','neg'],
+    ['BTC 资金费率','+0.010%','正常','pos'],
+    ['多空比','1.69','多头居多','pos'],
+    ['活跃信号源','6 / 6','ONLINE','pos'],
+    ['执行延迟','<2ms','P50','pos'],
+    ['执行交易所','5','VENUES','pos'],
+  ];
+  const html = items.map(([l,v,t,c])=>`<span class="ti"><span class="lab">${l}</span><span class="num">${v}</span><span class="${c}" style="font-size:11px">${t}</span></span>`).join('');
+  document.getElementById('tickerTrack').innerHTML = html+html; // duplicate for seamless loop
+})();
+
+/* ============ UTC CLOCK ============ */
+(function(){
+  const el = document.getElementById('utcClock');
+  function tick(){
+    const d = new Date();
+    const p=n=>String(n).padStart(2,'0');
+    el.textContent = `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} UTC`;
+  }
+  tick(); setInterval(tick,1000);
+})();
+
+/* ============ NAV scroll state ============ */
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', ()=>{ nav.classList.toggle('scrolled', window.scrollY>20); }, {passive:true});
+
+/* ============ REVEAL on scroll + trigger odometers/viz ============ */
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(en=>{
+    if(en.isIntersecting){
+      en.target.classList.add('in');
+      // odometers inside
+      en.target.querySelectorAll('[data-odo]').forEach(o=>{ if(!o.dataset.done){o.dataset.done=1; odo(o);} });
+      const c = en.target.querySelector('canvas[data-viz]');
+      io.unobserve(en.target);
+    }
+  });
+},{threshold:0.18, rootMargin:'0px 0px -8% 0px'});
+
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+
+// SAFETY FALLBACK: force-reveal everything after 1.2s so static screenshots
+// (and any browser where IO misbehaves) are always complete. Animation still
+// plays as progressive enhancement for items scrolled past before this fires.
+setTimeout(()=>{
+  document.querySelectorAll('.rv:not(.in)').forEach(el=>{
+    el.classList.add('in');
+    el.querySelectorAll('[data-odo]').forEach(o=>{ if(!o.dataset.done){o.dataset.done=1; odo(o);} });
+  });
+}, 1200);
+
+/* ============ INIT ============ */
+window.addEventListener('load', ()=>{
+  renderTraders('all');
+  // draw all feature viz
+  document.querySelectorAll('canvas[data-viz]').forEach(drawFeatViz);
+  // fire hero odometers immediately
+  document.querySelectorAll('.hero [data-odo]').forEach(o=>{ if(!o.dataset.done){o.dataset.done=1; odo(o);} });
+});
+// also render traders ASAP (don't wait for load) so screenshot is safe
+renderTraders('all');
+setTimeout(()=>document.querySelectorAll('canvas[data-viz]').forEach(drawFeatViz), 60);
+
+/* ============ CTA background flow (lighter) ============ */
+(function(){
+  const cv=document.getElementById('cta-canvas'); if(!cv) return;
+  const ctx=cv.getContext('2d'); let W,H,dpr,parts=[];
+  function rs(){ dpr=Math.min(window.devicePixelRatio||1,2); W=cv.clientWidth;H=cv.clientHeight; cv.width=W*dpr;cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);}
+  function init(){ rs(); parts=[]; for(let i=0;i<32;i++) parts.push({x:Math.random()*W,y:Math.random()*H,sp:0.4+Math.random()*1.4,len:10+Math.random()*30,a:.1+Math.random()*.4}); }
+  function fr(){ ctx.clearRect(0,0,W,H); for(const p of parts){ p.x+=p.sp; if(p.x>W+40)p.x=-40;
+      const g=ctx.createLinearGradient(p.x-p.len,0,p.x,0); g.addColorStop(0,'rgba(61,220,151,0)'); g.addColorStop(1,'rgba(61,220,151,'+p.a+')');
+      ctx.strokeStyle=g; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.x-p.len,p.y); ctx.lineTo(p.x,p.y); ctx.stroke(); }
+    requestAnimationFrame(fr); }
+  init(); window.addEventListener('resize',()=>{rs();init();}); requestAnimationFrame(fr);
+})();
+</script>
+</body>
+</html>
